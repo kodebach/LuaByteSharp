@@ -77,7 +77,7 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 | Gruppe            | Instruktionen                                                     | Aufwand   |
 |---                |---                                                                |---        |
 | Move/Load         | `MOVE`, `LOADK`, `LOADKX`, `LOADBOOL`, `LOADNIL`                  |           |
-| Up-Value/Table    | `(GET|SET)UPVAL`, `(GET|SET)TABUP`, `(GET|SET)TABLE`, `NEWTABLE`  |           |
+| Up-Value/Table    | `(GET/SET)UPVAL`, `(GET/SET)TABUP`, `(GET/SET)TABLE`, `NEWTABLE`  |           |
 | Arithmetik        | `ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MOD`, `POW`, `UNM`           |           |
 | Bit Manipulation  | `BAND`, `BOR`, `BXOR`, `SHL`, `SHR`, `BNOT`                       |           |
 | Logik             | `TEST`, `TESTSET`, `NOT`                                          |           |
@@ -89,16 +89,10 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 ### Standard Library Funktionen
 
-| Gruppe                | Funktionen                                                                                                    | Aufwand   |
-|---                    |---                                                                                                            |---        |
-| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`,  |           |
-|                       | `rawset`, `select`, `tonumber`, `tostring`, `type`, `_VERSION`                                                |           |
-| String Manipulation   | `string.byte`, `string.char`, `string.find`, `string.format`, `string.gmatch`, `string.gsub`, `string.len`    |           |
-|                       | `string.lower`, `string. match`, `string.rep`, `string.reverse`, `string.sub`, `string.upper`                 |           |
-| Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`,           |           |
-|                       | `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`,                |           |
-|                       | `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`,          |           |
-|                       | `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult`                                            |           |
-| Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`                                    |           |
-|                       | `table.pack`, `table.remove`, `table.sort`, `table.unpack`                                                    |           |
-| UTF-8 Support         | `utf8.char`, `utf8.charpattern`, `utf8.codes`, `utf8.codepoint`, `utf8.len`, `utf8.offset`                    |           | 
+| Gruppe                | Funktionen                                                                                    | Aufwand   |
+|---                    |---                                                                                            |---        |
+| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`, `rawset`, `select`, `tonumber`, `tostring`, `type`, `_VERSION` |           |
+| String Manipulation   | `string.byte`, `string.char`, `string.find`, `string.format`, `string.gmatch`, `string.gsub`, `string.len`, `string.lower`, `string. match`, `string.rep`, `string.reverse`, `string.sub`, `string.upper` |           |
+| Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`, `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`, `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`, `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult` |           |
+| Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`, `table.pack`, `table.remove`, `table.sort`, `table.unpack` |           |
+| UTF-8 Support         | `utf8.char`, `utf8.charpattern`, `utf8.codes`, `utf8.codepoint`, `utf8.len`, `utf8.offset`    |           | 
