@@ -67,7 +67,6 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 | Komponente                | Aufwand   |
 |---                        |---        |
-| Byte Code Parser          |           |
 | Interpreter Grundgerüst   |           |
 | Byte Code Instruktionen   |           |
 | Standard Library          |           |
