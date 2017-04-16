@@ -4,8 +4,8 @@
 LuaByteSharp soll ein Interpreter für Lua Byte-Code werden. Der Interpreter soll in C# geschrieben werden.
 Das Programm soll fähig sein, den vom Lua Standardcompiler luac, in der Version 5.3, erzeugten Byte-Code einzulesen und auszuführen.
 Geplant ist, dass alle der 47 existierenden Operationen ([siehe](https://www.lua.org/source/5.3/lopcodes.h.html)) unterstützt werden.
-Als Definition der Funktionsweise dieser Operationen werden die Beschreibungen im luac Sourcefile [`lopcodes.h`](https://www.lua.org/source/5.3/lopcodes.h.html),
-sowie die ausführlicheren Beschreibungen auf [dieser](https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst) Github Seite verwendet.
+Als Quellen für die Beschreibung der Opertationen, sowie des generellen Formats eines LuaByteCode Files, werden die unter [Quellen](#Quellen) gelisteten Quellen verwendet.
+
 Geplant ist ebenfalls, dass das Metatable-Konzept ([siehe](https://www.lua.org/manual/5.3/manual.html#2.4)) von Lua unterstützt wird.
 
 Da Lua-Code oft auf der Lua Standard Library aufbaut, soll zumindest ein Subset der Standard Library unterstützt werden.
@@ -14,8 +14,8 @@ Das Subset wird wahrscheinlich je nach verfügbarer Zeit angepasst werden. Jeden
 ## Detailierte Auflistung der Bestandteile
 
 ### Byte Code Instruktionen
-siehe [https://www.lua.org/source/5.3/lopcodes.h.html](https://www.lua.org/source/5.3/lopcodes.h.html)
-bzw. [https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst](https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst)
+siehe [hier](https://www.lua.org/source/5.3/lopcodes.h.html)
+bzw. [hier](https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst)
 
 ### Standard Library Funktionen
 [siehe auch](https://www.lua.org/manual/5.3/manual.html#6)
@@ -95,3 +95,18 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 | Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`, `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`, `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`, `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult` |           |
 | Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`, `table.pack`, `table.remove`, `table.sort`, `table.unpack` |           |
 | UTF-8 Support         | `utf8.char`, `utf8.charpattern`, `utf8.codes`, `utf8.codepoint`, `utf8.len`, `utf8.offset`    |           | 
+
+## Quellen
+
+### Beschreibung des Lua Byte Code File Format
+* http://luaforge.net/docman/83/98/ANoFrillsIntroToLua51VMInstructions.pdf (nur teilweise)
+* http://files.catwell.info/misc/mirror/lua-5.2-bytecode-vm-dirk-laurie/lua52vm.html (nur teilweise)
+* https://www.lua.org/source/5.3/ldump.h.html
+* https://www.lua.org/source/5.3/ldump.c.html
+* https://www.lua.org/source/5.3/lundump.h.html
+* https://www.lua.org/source/5.3/lundump.c.html
+
+### Beschreibung der einzelnen Instruktionen
+* https://www.lua.org/source/5.3/lopcodes.h.html
+* https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst
+
