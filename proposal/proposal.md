@@ -4,7 +4,7 @@
 LuaByteSharp soll ein Interpreter für Lua Byte-Code werden. Der Interpreter soll in C# geschrieben werden.
 Das Programm soll fähig sein, den vom Lua Standardcompiler luac, in der Version 5.3, erzeugten Byte-Code einzulesen und auszuführen.
 Geplant ist, dass alle der 47 existierenden Operationen ([siehe](https://www.lua.org/source/5.3/lopcodes.h.html)) unterstützt werden.
-Als Quellen für die Beschreibung der Opertationen, sowie des generellen Formats eines LuaByteCode Files, werden die unter [Quellen](#Quellen) gelisteten Quellen verwendet.
+Als Quellen für die Beschreibung der Opertationen, sowie des generellen Formats eines LuaByteCode Files, werden die unter [Quellen](#quellen) gelisteten Quellen verwendet.
 
 Geplant ist ebenfalls, dass das Metatable-Konzept ([siehe](https://www.lua.org/manual/5.3/manual.html#2.4)) von Lua unterstützt wird.
 
