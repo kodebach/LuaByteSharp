@@ -11,6 +11,16 @@ Geplant ist ebenfalls, dass das Metatable-Konzept ([siehe](https://www.lua.org/m
 Da Lua-Code oft auf der Lua Standard Library aufbaut, soll zumindest ein Subset der Standard Library unterstützt werden.
 Das Subset wird wahrscheinlich je nach verfügbarer Zeit angepasst werden. Jedenfalls werden aber weder `require` noch `load` bzw. `loadfile` und infolgedessen auch nicht `dofile` untersützt werden, da alle diese Funktionen Lua Sourcecode laden können, der Interpreter diesen aber nicht parsen kann.
 
+Außerdem muss das Lua Byte Code File kompatibel zu luac sein, und im Little-Endian Format vorliegen. Im Idealfall sollte folgender Header verwendet werden:
+```
+00:    1B 4C 75 61 53 00 19 93
+08:    0D 0A 1A 0A 04 08 04 08
+10:    08 78 56 00 00 00 00 00
+18:    00 00 00 00 00 00 28 77
+20:    40
+```
+Möglicherweise wird eine Konvertierungsfunktion implementiert, die Lua Byte Code von Big-Endian in Little-Endian umwandelt.
+
 ## Detailierte Auflistung der Bestandteile
 
 ### Byte Code Instruktionen
