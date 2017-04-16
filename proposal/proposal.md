@@ -77,34 +77,34 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 | Komponente                | Aufwand   |
 |---                        |---        |
-| Interpreter Grundgerüst   |           |
-| Byte Code Instruktionen   |           |
-| Standard Library          |           |
+| Interpreter Grundgerüst   | 10 h      |
+| Byte Code Instruktionen   | 20 h      |
+| Standard Library          | 40 h      |
 
 ### Byte Code Instruktionen
 
 | Gruppe            | Instruktionen                                                     | Aufwand   |
 |---                |---                                                                |---        |
-| Move/Load         | `MOVE`, `LOADK`, `LOADKX`, `LOADBOOL`, `LOADNIL`                  |           |
-| Up-Value/Table    | `(GET/SET)UPVAL`, `(GET/SET)TABUP`, `(GET/SET)TABLE`, `NEWTABLE`  |           |
-| Arithmetik        | `ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MOD`, `POW`, `UNM`           |           |
-| Bit Manipulation  | `BAND`, `BOR`, `BXOR`, `SHL`, `SHR`, `BNOT`                       |           |
-| Logik             | `TEST`, `TESTSET`, `NOT`                                          |           |
-| Vergleiche        | `EQ`, `LT`, `LE`                                                  |           |
-| Schleifen         | `FORLOOP`, `FORPREP`, `TFORLOOP`, `TFORCALL`                      |           |
-| Funktionen        | `CALL`, `TAILCALL`, `RETURN`, `CLOSURE`                           |           |
-| Andere            | `JMP`, `VARARG`, `SETLIST`, `CONCAT`, `LEN`, `SELF`, `EXTRAARG`   |           |
+| Move/Load         | `MOVE`, `LOADK`, `LOADKX`, `LOADBOOL`, `LOADNIL`                  | 2 h       |
+| Up-Value/Table    | `(GET/SET)UPVAL`, `(GET/SET)TABUP`, `(GET/SET)TABLE`, `NEWTABLE`  | 2 h       |
+| Arithmetik        | `ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MOD`, `POW`, `UNM`           | 1 h       |
+| Bit Manipulation  | `BAND`, `BOR`, `BXOR`, `SHL`, `SHR`, `BNOT`                       | 1 h       |
+| Logik             | `TEST`, `TESTSET`, `NOT`                                          | 1 h       |
+| Vergleiche        | `EQ`, `LT`, `LE`                                                  | 1 h       |
+| Schleifen         | `FORLOOP`, `FORPREP`, `TFORLOOP`, `TFORCALL`                      | 2 h       |
+| Funktionen        | `CALL`, `TAILCALL`, `RETURN`, `CLOSURE`                           | 6 h       |
+| Andere            | `JMP`, `VARARG`, `SETLIST`, `CONCAT`, `LEN`, `SELF`, `EXTRAARG`   | 4 h       |
 
 
 ### Standard Library Funktionen
 
 | Gruppe                | Funktionen                                                                                    | Aufwand   |
 |---                    |---                                                                                            |---        |
-| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`, `rawset`, `select`, `tonumber`, `tostring`, `type`, `_VERSION` |           |
-| String Manipulation   | `string.byte`, `string.char`, `string.find`, `string.format`, `string.gmatch`, `string.gsub`, `string.len`, `string.lower`, `string. match`, `string.rep`, `string.reverse`, `string.sub`, `string.upper` |           |
-| Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`, `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`, `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`, `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult` |           |
-| Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`, `table.pack`, `table.remove`, `table.sort`, `table.unpack` |           |
-| UTF-8 Support         | `utf8.char`, `utf8.charpattern`, `utf8.codes`, `utf8.codepoint`, `utf8.len`, `utf8.offset`    |           | 
+| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`, `rawset`, `select`, `tonumber`, `tostring`, `type`, `_VERSION` | 10 h      |
+| String Manipulation   | `string.byte`, `string.char`, `string.find`, `string.format`, `string.gmatch`, `string.gsub`, `string.len`, `string.lower`, `string. match`, `string.rep`, `string.reverse`, `string.sub`, `string.upper` | 15 h      |
+| Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`, `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`, `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`, `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult` | 5 h       |
+| Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`, `table.pack`, `table.remove`, `table.sort`, `table.unpack` | 5 h       |
+| UTF-8 Support         | `utf8.char`, `utf8.charpattern`, `utf8.codes`, `utf8.codepoint`, `utf8.len`, `utf8.offset`    | 5 h       | 
 
 ## Quellen
 
