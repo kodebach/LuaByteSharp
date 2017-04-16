@@ -123,4 +123,6 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 ### Standard Library Funktionen
 * https://www.lua.org/manual/5.3/manual.html#6
+* https://www.lua.org/source/5.3/lbaselib.c.html
+* https://www.lua.org/source/5.3/lstrlib.c.html
 
