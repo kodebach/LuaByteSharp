@@ -108,7 +108,7 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 ## Quellen
 
-### Beschreibung des Lua Byte Code File Format
+### Lua Byte Code File Format
 * http://luaforge.net/docman/83/98/ANoFrillsIntroToLua51VMInstructions.pdf (nur teilweise)
 * http://files.catwell.info/misc/mirror/lua-5.2-bytecode-vm-dirk-laurie/lua52vm.html (nur teilweise)
 * https://www.lua.org/source/5.3/ldump.h.html
@@ -116,7 +116,11 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 * https://www.lua.org/source/5.3/lundump.h.html
 * https://www.lua.org/source/5.3/lundump.c.html
 
-### Beschreibung der einzelnen Instruktionen
+### Byte Code Instruktionen
 * https://www.lua.org/source/5.3/lopcodes.h.html
+* https://www.lua.org/source/5.3/lvm.c.html
 * https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua_bytecode_reference.rst
+
+### Standard Library Funktionen
+* https://www.lua.org/manual/5.3/manual.html#6
 
