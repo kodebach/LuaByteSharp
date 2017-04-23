@@ -1,0 +1,205 @@
+\documentclass{article}
+
+\usepackage[margin=2cm]{geometry}
+\usepackage[utf8]{luainputenc}
+
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{tabu}
+\usepackage{multicol}
+\usepackage{sectsty}
+
+\sectionfont{\fontsize{24}{28}\selectfont}
+\subsectionfont{\fontsize{16}{18}\selectfont}
+\subsubsectionfont{\fontsize{14}{16}\selectfont}
+
+\usepackage{lmodern}
+\renewcommand*\familydefault{\sfdefault}
+\usepackage[T1]{fontenc}
+
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}\\}
+
+\begin{document}
+\section*{LuaByteSharp}\hypertarget{luabytesharp}{}\label{luabytesharp}
+
+\subsection*{Kurzbeschreibung des Projekts}\hypertarget{kurzbeschreibung-des-projekts}{}\label{kurzbeschreibung-des-projekts}
+
+LuaByteSharp soll ein Interpreter für Lua Byte-Code werden. Der Interpreter soll in C\# geschrieben werden.\newline
+Das Programm soll fähig sein, den vom Lua Standardcompiler luac, in der Version 5.3, erzeugten Byte-Code einzulesen und auszuführen.\newline
+Geplant ist, dass alle der 47 existierenden Operationen (\href{https://www.lua.org/source/5.3/lopcodes.h.html}{siehe}) unterstützt werden.\newline
+Als Quellen für die Beschreibung der Opertationen, sowie des generellen Formats eines LuaByteCode Files, werden die unter \hyperlink{quellen}{Quellen} gelisteten Quellen verwendet.
+Geplant ist ebenfalls, dass das Metatable-Konzept (\href{https://www.lua.org/manual/5.3/manual.html\#2.4}{siehe}) von Lua unterstützt wird.
+
+Da Lua-Code oft auf der Lua Standard Library aufbaut, soll zumindest ein Subset der Standard Library unterstützt werden.\newline
+Das Subset wird wahrscheinlich je nach verfügbarer Zeit angepasst werden. Jedenfalls werden aber weder \texttt{require} noch \texttt{load} bzw. \texttt{loadfile} und infolgedessen auch nicht \texttt{dofile} untersützt werden, da alle diese Funktionen Lua Sourcecode laden können, der Interpreter diesen aber nicht parsen kann.
+
+Außerdem muss das Lua Byte Code File kompatibel zur 64-Bit Version von luac sein, und im Little-Endian Format vorliegen. Es muss folgender Header vorhanden sein:
+
+\begin{verbatim}00:    1B 4C 75 61 53 00 19 93
+08:    0D 0A 1A 0A 04 08 04 08
+10:    08 78 56 00 00 00 00 00
+18:    00 00 00 00 00 00 28 77
+20:    40
+\end{verbatim}
+
+\subsection*{Detailierte Auflistung der Bestandteile}\hypertarget{detailierte-auflistung-der-bestandteile}{}\label{detailierte-auflistung-der-bestandteile}
+
+\subsubsection*{Byte Code Instruktionen}\hypertarget{byte-code-instruktionen}{}\label{byte-code-instruktionen}
+
+siehe \href{https://www.lua.org/source/5.3/lopcodes.h.html}{hier}\newline
+bzw. \href{https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua\_bytecode\_reference.rst}{hier}
+
+\subsubsection*{Standard Library Funktionen}\hypertarget{standard-library-funktionen}{}\label{standard-library-funktionen}
+
+\href{https://www.lua.org/manual/5.3/manual.html\#6}{siehe auch}
+
+\paragraph{Basic Functions}\hypertarget{basic-functions}{}\label{basic-functions}
+
+Bis auf die folgenende Ausnahmen, sollen alle Basic Functions unterstützt werden:
+
+\begin{multicols}{2}
+\begin{itemize}
+\item \texttt{collectgarbage}
+\item \texttt{dofile}
+\item \texttt{load}
+\item \texttt{loadfile}
+\item \texttt{pcall}
+\item \texttt{xpcall}
+\end{itemize}
+\end{multicols}
+
+\pagebreak
+
+\paragraph{String Manipulation}\hypertarget{string-manipulation}{}\label{string-manipulation}
+
+Auch hier ist geplant, bis auf einige Ausnahmen, alle Funktionen zu unterstützen.
+
+Ausnahmen:
+
+\begin{multicols}{2}
+\begin{itemize}
+\item \texttt{string.dump}
+\item \texttt{string.pack}
+\item \texttt{string.packsize}
+\item \texttt{string.unpack}
+\end{itemize}
+\end{multicols}
+
+\paragraph{UTF-8 Support}\hypertarget{utf-8-support}{}\label{utf-8-support}
+
+Die folgenden Methoden sollen alle unterstützt werden:
+
+\begin{multicols}{2}
+\begin{itemize}
+\item \texttt{utf8.char}
+\item \texttt{utf8.charpattern}
+\item \texttt{utf8.codes}
+\item \texttt{utf8.codepoint}
+\item \texttt{utf8.len}
+\item \texttt{utf8.offset}
+\end{itemize}
+\end{multicols}
+
+\paragraph{Table Manipulation}\hypertarget{table-manipulation}{}\label{table-manipulation}
+
+Die folgenden Methoden sollen alle unterstützt werden:
+
+\begin{multicols}{2}
+\begin{itemize}
+\item \texttt{table.concat}
+\item \texttt{table.insert}
+\item \texttt{table.move}
+\item \texttt{table.pack}
+\item \texttt{table.remove}
+\item \texttt{table.sort}
+\item \texttt{table.unpack}
+\end{itemize}
+\end{multicols}
+
+\paragraph{Mathematical Functions}\hypertarget{mathematical-functions}{}\label{mathematical-functions}
+
+Alle mathematischen Funktionen der Lua Standard Library sollen unterstützt werden.
+
+\subsubsection*{Mögliche Erweiterungen}\hypertarget{mögliche-erweiterungen}{}\label{mögliche-erweiterungen}
+
+Möglicherweise werden auch alle oder Teile der IO Funktionen unterstützt werden.\newline
+Auch die Funktionen \texttt{string.pack}, \texttt{string.packsize} und \texttt{string.unpack} werden vielleicht unterstützt.
+
+\subsection*{Aufwandsabschätzungen}\hypertarget{aufwandsabschätzungen}{}\label{aufwandsabschätzungen}
+
+\begin{longtabu}{|X[l]|l|}
+\hline
+\bfseries Komponente & \bfseries Aufwand\\
+\hline
+Interpreter Grundgerüst & 10 h\\
+Byte Code Instruktionen & 20 h\\
+Standard Library & 40 h\\
+\hline
+\end{longtabu}
+
+\pagebreak
+
+\subsubsection*{Byte Code Instruktionen}\hypertarget{byte-code-instruktionen-1}{}\label{byte-code-instruktionen-1}
+
+\begin{longtabu} to \textwidth {|l|X[l]|l|}
+\hline
+\bfseries Gruppe & \bfseries Instruktionen & \bfseries Aufwand\\
+\hline
+Move/Load & \texttt{MOVE}, \texttt{LOADK}, \texttt{LOADKX}, \texttt{LOADBOOL}, \texttt{LOADNIL} & 2 h\\
+Up-Value/Table & \texttt{(GET/SET)UPVAL}, \texttt{(GET/SET)TABUP}, \texttt{(GET/SET)TABLE}, \texttt{NEWTABLE} & 2 h\\
+Arithmetik & \texttt{ADD}, \texttt{SUB}, \texttt{MUL}, \texttt{DIV}, \texttt{IDIV}, \texttt{MOD}, \texttt{POW}, \texttt{UNM} & 1 h\\
+Bit Manipulation & \texttt{BAND}, \texttt{BOR}, \texttt{BXOR}, \texttt{SHL}, \texttt{SHR}, \texttt{BNOT} & 1 h\\
+Logik & \texttt{TEST}, \texttt{TESTSET}, \texttt{NOT} & 1 h\\
+Vergleiche & \texttt{EQ}, \texttt{LT}, \texttt{LE} & 1 h\\
+Schleifen & \texttt{FORLOOP}, \texttt{FORPREP}, \texttt{TFORLOOP}, \texttt{TFORCALL} & 2 h\\
+Funktionen & \texttt{CALL}, \texttt{TAILCALL}, \texttt{RETURN}, \texttt{CLOSURE} & 6 h\\
+Andere & \texttt{JMP}, \texttt{VARARG}, \texttt{SETLIST}, \texttt{CONCAT}, \texttt{LEN}, \texttt{SELF}, \texttt{EXTRAARG} & 4 h\\
+\hline
+\end{longtabu}
+
+\subsubsection*{Standard Library Funktionen}\hypertarget{standard-library-funktionen-1}{}\label{standard-library-funktionen-1}
+
+\begin{longtabu} to \textwidth {|l|X[l]|l|}
+\hline
+\bfseries Gruppe & \bfseries Funktionen & \bfseries Aufwand\\
+\hline
+Basis Funktionen & \texttt{assert}, \texttt{error}, \texttt{\_G}, \texttt{getmetatable}, \texttt{ipairs}, \texttt{next}, \texttt{pairs}, \texttt{print}, \texttt{rawequal}, \texttt{rawget}, \texttt{rawlen}, \texttt{rawset}, \texttt{select}, \texttt{tonumber}, \texttt{tostring}, \texttt{type}, \texttt{\_VERSION} & 10 h\\
+String Manipulation & \texttt{string.byte}, \texttt{string.char}, \texttt{string.find}, \texttt{string.format}, \texttt{string.gmatch}, \texttt{string.gsub}, \texttt{string.len}, \texttt{string.lower}, \texttt{string. match}, \texttt{string.rep}, \texttt{string.reverse}, \texttt{string.sub}, \texttt{string.upper} & 15 h\\
+Mathematik & \texttt{math.abs}, \texttt{math.acos}, \texttt{math.asin}, \texttt{math.atan}, \texttt{math.ceil}, \texttt{math.cos}, \texttt{math.deg}, \texttt{math.exp}, \texttt{math.floor}, \texttt{math.fmod}, \texttt{math.huge}, \texttt{math.log}, \texttt{math.max}, \texttt{math.maxinteger}, \texttt{math.min}, \texttt{math.mininteger}, \texttt{math.modf}, \texttt{math.pi}, \texttt{math.rad}, \texttt{math.random}, \texttt{math.randomseed}, \texttt{math.sin}, \texttt{math.sqrt}, \texttt{math.tan}, \texttt{math.tointeger}, \texttt{math.type}, \texttt{math.ult} & 5 h\\
+Table Manipulation & \texttt{table.concat}, \texttt{table.insert}, \texttt{table.move}, \texttt{table.pack}, \texttt{table.remove}, \texttt{table.pack}, \texttt{table.remove}, \texttt{table.sort}, \texttt{table.unpack} & 5 h\\
+UTF-8 Support & \texttt{utf8.char}, \texttt{utf8.charpattern}, \texttt{utf8.codes}, \texttt{utf8.codepoint}, \texttt{utf8.len}, \texttt{utf8.offset} & 5 h\\
+\hline
+\end{longtabu}
+
+\newpage
+\subsection*{Quellen}\hypertarget{quellen}{}\label{quellen}
+
+\subsubsection*{Lua Byte Code File Format}\hypertarget{lua-byte-code-file-format}{}\label{lua-byte-code-file-format}
+
+\begin{itemize}
+\item http://luaforge.net/docman/83/98/ANoFrillsIntroToLua51VMInstructions.pdf (nur teilweise)
+\item http://files.catwell.info/misc/mirror/lua-5.2-bytecode-vm-dirk-laurie/lua52vm.html (nur teilweise)
+\item https://www.lua.org/source/5.3/ldump.h.html
+\item https://www.lua.org/source/5.3/ldump.c.html
+\item https://www.lua.org/source/5.3/lundump.h.html
+\item https://www.lua.org/source/5.3/lundump.c.html
+\end{itemize}
+
+\subsubsection*{Byte Code Instruktionen}\hypertarget{byte-code-instruktionen-2}{}\label{byte-code-instruktionen-2}
+
+\begin{itemize}
+\item https://www.lua.org/source/5.3/lopcodes.h.html
+\item https://www.lua.org/source/5.3/lvm.c.html
+\item https://github.com/dibyendumajumdar/ravi/blob/master/readthedocs/lua\_bytecode\_reference.rst
+\end{itemize}
+
+\subsubsection*{Standard Library Funktionen}\hypertarget{standard-library-funktionen-2}{}\label{standard-library-funktionen-2}
+
+\begin{itemize}
+\item https://www.lua.org/manual/5.3/manual.html\#6
+\item https://www.lua.org/source/5.3/lbaselib.c.html
+\item https://www.lua.org/source/5.3/lstrlib.c.html
+\end{itemize}
+
+\end{document}
