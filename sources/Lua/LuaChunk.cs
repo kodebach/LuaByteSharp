@@ -14,7 +14,12 @@ namespace LuaByteSharp.Lua
 
         public static LuaChunk Load(string path)
         {
-            using (var reader = new BinaryReader(File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None)))
+            return Load(File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None));
+        }
+
+        public static LuaChunk Load(Stream stream)
+        {
+            using (var reader = new BinaryReader(stream))
             {
                 if (!LuaHeader.CheckHeader(reader))
                 {

@@ -20,31 +20,31 @@ namespace LuaByteSharp.Lua
             return new LuaString(size < int.MaxValue ? reader.ReadBytes((int) size) : reader.ReadManyBytes(size));
         }
 
-        internal static dynamic LoadConstant(BinaryReader reader)
+        internal static LuaValue LoadConstant(BinaryReader reader)
         {
-            var type = (LuaConstantType) reader.ReadByte();
+            var type = (LuaValueType) reader.ReadByte();
             switch (type)
             {
-                case LuaConstantType.Nil:
-                    return null;
-                case LuaConstantType.Boolean:
-                    return reader.ReadBoolean();
-                case LuaConstantType.Float:
-                    return reader.ReadDouble();
-                case LuaConstantType.Integer:
-                    return reader.ReadInt64();
-                case LuaConstantType.ShortString:
-                case LuaConstantType.LongString:
-                    return LoadString(reader);
+                case LuaValueType.Nil:
+                    return new LuaValue(type, null);
+                case LuaValueType.Boolean:
+                    return new LuaValue(type, reader.ReadBoolean());
+                case LuaValueType.Float:
+                    return new LuaValue(type, reader.ReadDouble());
+                case LuaValueType.Integer:
+                    return new LuaValue(type, reader.ReadInt64());
+                case LuaValueType.ShortString:
+                case LuaValueType.LongString:
+                    return new LuaValue(type, LoadString(reader));
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentException("unknown constant type");
             }
         }
 
-        internal static dynamic[] LoadConstants(BinaryReader reader)
+        internal static LuaValue[] LoadConstants(BinaryReader reader)
         {
             var size = reader.ReadUInt32();
-            var buffer = new dynamic[size];
+            var buffer = new LuaValue[size];
             for (var i = 0; i < size; i++)
             {
                 buffer[i] = LoadConstant(reader);
@@ -78,23 +78,5 @@ namespace LuaByteSharp.Lua
         {
             return new LuaUpValue {InStack = reader.ReadByte(), Index = reader.ReadByte()};
         }
-    }
-
-    internal struct LuaUpValue
-    {
-        public byte InStack;
-        public byte Index;
-    }
-
-    internal enum LuaConstantType
-    {
-        Nil = 0,
-        Boolean = 1,
-        Number = 3,
-        Float = Number | (0 << 4),
-        Integer = Number | (1 << 4),
-        String = 4,
-        ShortString = String | (0 << 4),
-        LongString = String | (1 << 4)
     }
 }

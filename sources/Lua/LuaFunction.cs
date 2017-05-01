@@ -11,7 +11,7 @@ namespace LuaByteSharp.Lua
         public bool IsVarArg;
         public byte MaxStackSize;
         public uint[] Code;
-        public dynamic[] Constants;
+        public LuaValue[] Constants;
         public LuaUpValue[] UpValues;
 
         public LuaFunction[] Prototypes;
