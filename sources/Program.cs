@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using LuaByteSharp.Lua;
 
 namespace LuaByteSharp
@@ -6,12 +7,20 @@ namespace LuaByteSharp
     public class Program
     {
 #if DEBUG
+
         public static void Main(string[] args)
         {
-            Interpreter.Run(args);
+            foreach (var file in Directory.EnumerateFiles("tests"))
+            {
+                Console.WriteLine($"=== running {file} ===");
+                Interpreter.Run(new[] {file});
+                Console.WriteLine("=== done ===");
+            }
 
+            Console.WriteLine("=== all done ===");
             Console.ReadLine();
         }
+
 #else
         public static void Main(string[] args)
         {

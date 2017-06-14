@@ -96,5 +96,50 @@ namespace LuaByteSharp.Lua
         {
             return new LuaString(Encoding.ASCII.GetBytes(v.ToString(CultureInfo.InvariantCulture)));
         }
+
+        protected bool Equals(LuaString other)
+        {
+            return !ReferenceEquals(null, other) && _rawValue.Length == other._rawValue.Length &&
+                   _rawValue.SequenceEqual(other._rawValue);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType() && Equals((LuaString) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return _rawValue != null ? _rawValue.GetHashCode() : 0;
+        }
+
+        public static bool operator ==(LuaString left, LuaString right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(LuaString left, LuaString right)
+        {
+            return !Equals(left, right);
+        }
+
+        public int CompareTo(LuaString other)
+        {
+            for (var i = 0; i < _rawValue.Length && i < other._rawValue.Length; i++)
+            {
+                if (_rawValue[i] < other._rawValue[i])
+                {
+                    return -1;
+                }
+                if (_rawValue[i] > other._rawValue[i])
+                {
+                    return 1;
+                }
+            }
+
+            return _rawValue.Length.CompareTo(other._rawValue.Length);
+        }
     }
 }
