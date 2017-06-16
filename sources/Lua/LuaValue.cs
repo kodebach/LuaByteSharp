@@ -9,10 +9,13 @@ namespace LuaByteSharp.Lua
         public static readonly LuaValue Zero = new LuaValue(LuaValueType.Integer, 0);
 
         public bool IsNil => Type == LuaValueType.Nil;
-        public bool IsNaN => IsNumber && double.IsNaN((double) RawValue);
+        public bool IsNaN => IsNumber && RawValue is double && double.IsNaN((double) RawValue);
         public bool IsFalse => IsNil || IsNaN;
         public bool IsNumber => Type == LuaValueType.Integer || Type == LuaValueType.Float;
         public bool IsString => Type == LuaValueType.ShortString || Type == LuaValueType.LongString;
+
+        public LuaValue Length => throw new NotImplementedException();
+        public bool IsEmptyString => IsString && ((LuaString) RawValue).IsEmpty;
 
         public readonly LuaValueType Type;
         public readonly object RawValue;
@@ -285,12 +288,12 @@ namespace LuaByteSharp.Lua
 
         public static bool operator ==(LuaValue lhs, LuaValue rhs)
         {
-            return lhs != null && lhs.Equals(rhs);
+            return !ReferenceEquals(lhs, null) && lhs.Equals(rhs);
         }
 
         public static bool operator !=(LuaValue lhs, LuaValue rhs)
         {
-            return lhs == null || !lhs.Equals(rhs);
+            return ReferenceEquals(lhs, null) || !lhs.Equals(rhs);
         }
 
         protected bool Equals(LuaValue other)
@@ -302,7 +305,8 @@ namespace LuaByteSharp.Lua
                     return ReferenceEquals(this, other);
                 }
 
-                return Type == LuaValueType.Nil || Type != LuaValueType.ExternalFunction && RawValue == other.RawValue;
+                return Type == LuaValueType.Nil || Type != LuaValueType.ExternalFunction &&
+                       Equals(RawValue, other.RawValue);
             }
 
             if (!IsNumber || !other.IsNumber)
@@ -381,6 +385,37 @@ namespace LuaByteSharp.Lua
             return Comparer<LuaValue>.Default.Compare(left, right) >= 0;
         }
 
+        public LuaValue this[int index]
+        {
+            get
+            {
+                if (Type == LuaValueType.Table)
+                {
+                    var table = (LuaTable) RawValue;
+                    if (!table.HasMetaMethods)
+                    {
+                        return table[index];
+                    }
+                }
+
+                throw new NotImplementedException("metamethods not supported");
+            }
+            set
+            {
+                if (Type == LuaValueType.Table)
+                {
+                    var table = (LuaTable) RawValue;
+                    if (!table.HasMetaMethods)
+                    {
+                        table[index] = value;
+                        return;
+                    }
+                }
+
+                throw new NotImplementedException("metamethods not supported");
+            }
+        }
+
         public LuaValue this[LuaValue index]
         {
             get
@@ -404,11 +439,57 @@ namespace LuaByteSharp.Lua
                     if (!table.HasMetaMethods)
                     {
                         table[index] = value;
+                        return;
                     }
                 }
 
                 throw new NotImplementedException("metamethods not supported");
             }
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(Type)}: {Type}, {nameof(RawValue)}: {RawValue}";
+        }
+
+        public static LuaValue ExternalFunction(Delegate del)
+        {
+            return new LuaValue(LuaValueType.ExternalFunction, del);
+        }
+
+        public static LuaValue ExternalFunction<T>(Action<T> action)
+        {
+            return new LuaValue(LuaValueType.ExternalFunction, action);
+        }
+
+        public string ToPrintString()
+        {
+            // TODO: check for metamethod __tostring
+            switch (Type)
+            {
+                case LuaValueType.Nil:
+                    return "nil";
+                case LuaValueType.Boolean:
+                    return IsFalse ? "false" : "true";
+                case LuaValueType.Float:
+                case LuaValueType.Integer:
+                    return RawValue.ToString();
+                case LuaValueType.ShortString:
+                case LuaValueType.LongString:
+                    return AsString().Value;
+                case LuaValueType.Table:
+                    return RawValue.ToString();
+                case LuaValueType.Closure:
+                    return $"Closure 0x{GetHashCode():X8}";
+                case LuaValueType.ExternalFunction:
+                    return "ExternalFunction";
+            }
+            return null;
+        }
+
+        public static LuaValue Concat(LuaValue[] args)
+        {
+            return new LuaValue(LuaValueType.LongString, LuaString.Concat(args));
         }
     }
 }

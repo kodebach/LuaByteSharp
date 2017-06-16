@@ -1,17 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LuaByteSharp.Lua
 {
     internal class LuaTable
     {
-        private readonly List<LuaValue> _array;
+        private LuaValue[] _array;
         private readonly Dictionary<LuaValue, LuaValue> _dictionary;
+
+        protected LuaTable()
+        {
+            _array = new LuaValue[8];
+            _dictionary = new Dictionary<LuaValue, LuaValue>();
+        }
 
         public LuaTable(int arraySize, int dictionarySize)
         {
-            _array = new List<LuaValue>(arraySize);
+            _array = new LuaValue[arraySize];
             _dictionary = new Dictionary<LuaValue, LuaValue>(dictionarySize);
+        }
+
+        internal LuaValue this[int index]
+        {
+            get => _array[index];
+            set
+            {
+                if (index >= _array.Length)
+                {
+                    Array.Resize(ref _array, index + 1);
+                }
+                _array[index] = value;
+            }
         }
 
         internal virtual LuaValue this[LuaValue key]
@@ -85,6 +105,16 @@ namespace LuaByteSharp.Lua
         public static bool operator !=(LuaTable left, LuaTable right)
         {
             return !Equals(left, right);
+        }
+
+        public override string ToString()
+        {
+            return _array.Select((value, i) => new Tuple<string, string>(i.ToString(), value.ToString()))
+                .Concat(_dictionary.Select(
+                    kvp => new Tuple<string, string>(kvp.Key.RawValue.ToString(), kvp.Value.ToString())))
+                .Aggregate("{",
+                    (current, value) => $"{current} [{value.Item1}] = {value.Item2},",
+                    s => s.TrimEnd(',') + "}");
         }
     }
 }

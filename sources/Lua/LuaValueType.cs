@@ -11,7 +11,7 @@
         ShortString = String | (0 << 4),
         LongString = String | (1 << 4),
         Table = 5,
-        Function = 6,
+        Closure = 6,
         ExternalFunction = 7
     }
 }

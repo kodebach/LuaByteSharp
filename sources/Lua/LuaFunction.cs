@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 
 namespace LuaByteSharp.Lua
 {
@@ -17,7 +18,7 @@ namespace LuaByteSharp.Lua
         public LuaFunction[] Prototypes;
 
         public uint[] Lines;
-        public LuaString[] Locals;
+        public LocalInfo[] Locals;
         public LuaString[] UpValueNames;
 
         public static LuaFunction Load(BinaryReader reader)
@@ -49,10 +50,15 @@ namespace LuaByteSharp.Lua
             }
 
             var sizeLocals = reader.ReadUInt32();
-            function.Locals = new LuaString[sizeLocals];
+            function.Locals = new LocalInfo[sizeLocals];
             for (var i = 0; i < sizeLocals; i++)
             {
-                function.Locals[i] = LoadHelper.LoadString(reader);
+                function.Locals[i] = new LocalInfo
+                {
+                    Name = LoadHelper.LoadString(reader),
+                    StartPc = reader.ReadUInt32(),
+                    EndPc = reader.ReadUInt32()
+                };
             }
 
             var sizeUpValueNames = reader.ReadUInt32();
@@ -63,6 +69,13 @@ namespace LuaByteSharp.Lua
             }
 
             return function;
+        }
+
+        internal struct LocalInfo
+        {
+            public LuaString Name;
+            public uint StartPc;
+            public uint EndPc;
         }
     }
 }

@@ -76,7 +76,7 @@ namespace LuaByteSharp.Lua
 
         private static LuaUpValue LoadUpValue(BinaryReader reader)
         {
-            return new LuaUpValue {InStack = reader.ReadByte(), Index = reader.ReadByte()};
+            return new LuaUpValue {InStack = reader.ReadBoolean(), Index = reader.ReadByte()};
         }
     }
 }

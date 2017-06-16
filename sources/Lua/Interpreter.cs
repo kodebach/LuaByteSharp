@@ -16,6 +16,8 @@ namespace LuaByteSharp.Lua
             public string[] Files;
         }
 
+        private const int FIELDS_PER_FLUSH = 50;
+
         public static void Run(string[] args)
         {
             var pArgs = ParseArgs(args);
@@ -55,17 +57,29 @@ namespace LuaByteSharp.Lua
 
         private static void ExecuteChunk(LuaTable env, LuaChunk chunk, bool allowInclude)
         {
-            var regs = new List<LuaValue>();
-
             if (allowInclude)
             {
                 throw new NotImplementedException();
             }
 
-            var consts = chunk.RootFunction.Constants;
-            for (var pc = 0; pc < chunk.RootFunction.Code.Length; pc++)
+            var function = chunk.RootFunction;
+            var retvals = ExecuteFunction(function, new LuaValue[function.MaxStackSize],
+                new[] {new LuaValue(LuaValueType.Table, env)});
+#if DEBUG
+            Console.WriteLine(
+                $"Function returned: {retvals.Aggregate("{", (current, value) => $"{current} {value},", s => s.TrimEnd(',') + "}")}"
+            );
+#endif
+        }
+
+        private static LuaValue[] ExecuteFunction(LuaFunction function, LuaValue[] regs, IList<LuaValue> upvals)
+        {
+            var consts = function.Constants;
+            var upDescs = function.UpValues;
+            var protos = function.Prototypes;
+            for (var pc = 0; pc < function.Code.Length; pc++)
             {
-                var instr = chunk.RootFunction.Code[pc];
+                var instr = function.Code[pc];
                 var opcode = (OpCode) InstructionMask.GetOpCode(instr);
 
                 switch (opcode)
@@ -87,7 +101,7 @@ namespace LuaByteSharp.Lua
                     case OpCode.LoadKx:
                     {
                         var a = InstructionMask.GetArgA(instr);
-                        instr = chunk.RootFunction.Code[++pc];
+                        instr = function.Code[++pc];
                         if (InstructionMask.GetOpCode(instr) != (byte) OpCode.ExtraArg)
                         {
                             throw new NotSupportedException("LOADKX must be followed by EXTRAARG");
@@ -122,7 +136,7 @@ namespace LuaByteSharp.Lua
                     {
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
-                        regs[a] = GetUpVal(b);
+                        regs[a] = upvals[upDescs[b].Index];
                         break;
                     }
                     case OpCode.GetTabUp:
@@ -131,7 +145,7 @@ namespace LuaByteSharp.Lua
                         var b = InstructionMask.GetArgB(instr);
                         var c = InstructionMask.GetArgC(instr);
                         var rc = GetRK(regs, consts, c);
-                        regs[a] = GetUpVal(b)[rc];
+                        regs[a] = upvals[upDescs[b].Index][rc];
                         break;
                     }
                     case OpCode.GetTable:
@@ -150,14 +164,14 @@ namespace LuaByteSharp.Lua
                         var c = InstructionMask.GetArgC(instr);
                         var rb = GetRK(regs, consts, b);
                         var rc = GetRK(regs, consts, c);
-                        GetUpVal(a)[rb] = rc;
+                        upvals[upDescs[a].Index][rb] = rc;
                         break;
                     }
                     case OpCode.SetUpVal:
                     {
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
-                        SetUpVal(b, regs[a]);
+                        upvals[upDescs[b].Index] = regs[a];
                         break;
                     }
                     case OpCode.SetTable:
@@ -363,6 +377,24 @@ namespace LuaByteSharp.Lua
                         regs[a] = !rb;
                         break;
                     }
+                    case OpCode.Len:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+
+                        regs[a] = regs[b].Length;
+                        break;
+                    }
+                    case OpCode.Concat:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+                        var c = InstructionMask.GetArgC(instr);
+                        var args = new LuaValue[c - b + 1];
+                        Array.Copy(regs, b, args, 0, c - b + 1);
+                        regs[a] = LuaValue.Concat(args);
+                        break;
+                    }
                     case OpCode.Jmp:
                     {
                         var a = InstructionMask.GetArgA(instr);
@@ -438,6 +470,54 @@ namespace LuaByteSharp.Lua
                         }
                         break;
                     }
+                    case OpCode.Call:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+                        var c = InstructionMask.GetArgC(instr);
+
+                        if (regs[a].Type == LuaValueType.Closure)
+                        {
+                            var closure = (LuaClosure) regs[a].RawValue;
+                            var args = new LuaValue[closure.Function.MaxStackSize];
+                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
+                            Array.Copy(regs, a + 1, args, 0, argCount); // TODO inefficent use base/top, don't recur
+                            var retvals = ExecuteFunction(closure.Function, args, closure.UpValues);
+
+                            var retCount = c == 0 ? retvals.Length - a : c - 1;
+                            Array.Copy(retvals, 0, regs, a, retCount); // TODO inefficent use base/top, don't recur
+                        }
+                        else if (regs[a].Type == LuaValueType.ExternalFunction)
+                        {
+                            var del = (Delegate) regs[a].RawValue;
+
+                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
+                            var args = new LuaValue[argCount];
+                            Array.Copy(regs, a + 1, args, 0, argCount); // TODO inefficent use base/top, don't recur
+                            var retvals = del.DynamicInvoke(new object[] {args});
+                            if (retvals != null)
+                            {
+                                Array.Copy((Array) retvals, 0, regs, a + 3, c); // TODO use base/top
+                            }
+                        }
+                        else
+                        {
+                            throw new ArgumentException(
+                                "trying to call something that is not a closure or an external function");
+                        }
+                        break;
+                    }
+                    case OpCode.Return:
+                    {
+                        CloseUpVals(regs, 0);
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+                        var retCount = b == 0 ? regs.Length - a : b - 1;
+
+                        var retvals = new LuaValue[retCount];
+                        Array.Copy(regs, a, retvals, 0, retCount);
+                        return retvals; // TODO inefficent use base/top, don't recur
+                    }
                     case OpCode.ForLoop:
                     {
                         var a = InstructionMask.GetArgA(instr);
@@ -459,6 +539,82 @@ namespace LuaByteSharp.Lua
                         pc += sbx;
                         break;
                     }
+                    case OpCode.TForCall:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var c = InstructionMask.GetArgC(instr);
+                        if (regs[a].Type == LuaValueType.Closure)
+                        {
+                            var closure = (LuaClosure) regs[a].RawValue;
+                            var args = new LuaValue[closure.Function.MaxStackSize];
+                            Array.Copy(regs, a + 1, args, 0, 2); // TODO inefficent use base/top, don't recur
+                            var retvals = ExecuteFunction(closure.Function, args, closure.UpValues);
+
+                            Array.Copy(retvals, 0, regs, a + 3, c); // TODO inefficent use base/top, don't recur
+                        }
+                        else if (regs[a].Type == LuaValueType.ExternalFunction)
+                        {
+                            var del = (Delegate) regs[a].RawValue;
+
+                            var args = new LuaValue[2];
+                            Array.Copy(regs, a + 1, args, 0, 2); // TODO inefficent use base/top, don't recur
+                            var retvals = del.DynamicInvoke(new object[] {args});
+                            if (retvals != null)
+                            {
+                                Array.Copy((Array) retvals, 0, regs, a + 3, c); // TODO use base/top
+                            }
+                        }
+                        else
+                        {
+                            throw new ArgumentException(
+                                "trying to call something that is not a closure or an external function");
+                        }
+                        break;
+                    }
+                    case OpCode.TForLoop:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var sbx = InstructionMask.GetArgSBx(instr);
+                        if (!regs[a].IsNil)
+                        {
+                            regs[a] = regs[a + 1];
+                            pc += sbx;
+                        }
+                        break;
+                    }
+                    case OpCode.SetList:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        int b = InstructionMask.GetArgB(instr);
+                        int c = InstructionMask.GetArgC(instr);
+                        if (c == 0)
+                        {
+                            instr = function.Code[++pc];
+                            if (InstructionMask.GetOpCode(instr) != (byte) OpCode.ExtraArg)
+                            {
+                                throw new NotSupportedException("SETLIST with c == 0 has to be followed by EXTRAARG");
+                            }
+                            c = InstructionMask.GetArgAx(instr);
+                        }
+                        if (b == 0)
+                        {
+                            b = regs.Length - a - 1; // TODO: use top
+                        }
+                        for (var i = 1; i <= b; i++)
+                        {
+                            regs[a][(c - 1) * FIELDS_PER_FLUSH + i] = regs[a + i];
+                        }
+                        break;
+                    }
+                    case OpCode.Closure:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var bx = InstructionMask.GetArgBx(instr);
+                        regs[a] = CreateClosure(protos[bx], regs, upvals);
+                        break;
+                    }
+                    case OpCode.ExtraArg:
+                        break;
                     default:
 #if DEBUG
                         Console.WriteLine("unknown OP_CODE: " + opcode);
@@ -468,24 +624,34 @@ namespace LuaByteSharp.Lua
 #endif
                 }
             }
+
+            throw new NotSupportedException("function did not return");
         }
 
-        private static void CloseUpVals(List<LuaValue> regs, int i)
+        private static LuaValue CreateClosure(LuaFunction function, IList<LuaValue> regs, IList<LuaValue> upvals)
         {
+            var closure = new LuaClosure(function);
+            var len = function.UpValues.Length;
+            for (var i = 0; i < len; i++)
+            {
+                if (function.UpValues[i].InStack)
+                {
+                    closure.UpValues[len - i - 1] = regs[function.UpValues[i].Index];
+                }
+                else
+                {
+                    closure.UpValues[len - i - 1] = upvals[function.UpValues[i].Index];
+                }
+            }
+            return new LuaValue(LuaValueType.Closure, closure);
         }
 
-        private static void SetUpVal(int index, LuaValue value)
+        private static void CloseUpVals(IList<LuaValue> regs, int i)
         {
-            throw new NotImplementedException();
-        }
-
-        private static LuaValue GetUpVal(int index)
-        {
-            throw new NotImplementedException();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static LuaValue GetRK(IReadOnlyList<LuaValue> registers, IReadOnlyList<LuaValue> constants, short rk)
+        private static LuaValue GetRK(IList<LuaValue> registers, IList<LuaValue> constants, short rk)
         {
             return (rk & InstructionMask.MaskK) != 0 ? constants[rk & ~InstructionMask.MaskK] : registers[rk];
         }
@@ -644,6 +810,18 @@ namespace LuaByteSharp.Lua
             {
                 return (int) ((instr & MaskBx) >> PosBx) - MaxSBx;
             }
+        }
+    }
+
+    internal class LuaClosure
+    {
+        public LuaFunction Function;
+        public IList<LuaValue> UpValues;
+
+        public LuaClosure(LuaFunction function)
+        {
+            Function = function;
+            UpValues = new LuaValue[function.UpValues.Length];
         }
     }
 }

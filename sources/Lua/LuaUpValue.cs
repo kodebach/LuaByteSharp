@@ -2,7 +2,7 @@
 {
     internal struct LuaUpValue
     {
-        public byte InStack;
+        public bool InStack;
         public byte Index;
     }
 }
