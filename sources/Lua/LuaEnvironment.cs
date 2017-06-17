@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 namespace LuaByteSharp.Lua
 {
-    internal delegate void Print(params LuaValue[] values);
-
     internal class LuaEnvironment : LuaTable
     {
         private readonly Dictionary<LuaValue, LuaValue> _external = new Dictionary<LuaValue, LuaValue>();
@@ -16,7 +14,7 @@ namespace LuaByteSharp.Lua
 
         private void SetUpEnvironment()
         {
-            SetExternalFunction("print", new Print(PrintLuaValue));
+            SetExternalFunction("print", PrintLuaValue);
         }
 
         private static void PrintLuaValue(params LuaValue[] values)
@@ -51,10 +49,14 @@ namespace LuaByteSharp.Lua
             return !_external.ContainsKey(key) ? LuaValue.Nil : _external[key];
         }
 
-        private void SetExternalFunction(string s, Delegate del)
+        private void SetExternalFunction(string s, Action<LuaValue[]> del)
         {
-            var name = LuaString.FromString(s);
-            SetExternal(new LuaValue(LuaValueType.ShortString, name), LuaValue.ExternalFunction(del));
+            SetExternal(LuaString.FromString(s), LuaValue.ExternalAction(del));
+        }
+
+        private void SetExternalFunction(string s, Func<LuaValue[], LuaValue[]> del)
+        {
+            SetExternal(LuaString.FromString(s), LuaValue.ExternalFunction(del));
         }
 
         private void SetExternal(LuaValue key, LuaValue value)

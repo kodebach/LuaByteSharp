@@ -452,14 +452,9 @@ namespace LuaByteSharp.Lua
             return $"{nameof(Type)}: {Type}, {nameof(RawValue)}: {RawValue}";
         }
 
-        public static LuaValue ExternalFunction(Delegate del)
+        public static LuaValue ExternalFunction(Func<LuaValue[], LuaValue[]> func)
         {
-            return new LuaValue(LuaValueType.ExternalFunction, del);
-        }
-
-        public static LuaValue ExternalFunction<T>(Action<T> action)
-        {
-            return new LuaValue(LuaValueType.ExternalFunction, action);
+            return new LuaValue(LuaValueType.ExternalFunction, func);
         }
 
         public string ToPrintString()
@@ -487,9 +482,14 @@ namespace LuaByteSharp.Lua
             return null;
         }
 
-        public static LuaValue Concat(LuaValue[] args)
+        public static LuaValue Concat(IList<LuaValue> args)
         {
             return new LuaValue(LuaValueType.LongString, LuaString.Concat(args));
+        }
+
+        public static LuaValue ExternalAction(Action<LuaValue[]> action)
+        {
+            return new LuaValue(LuaValueType.ExternalAction, action);
         }
     }
 }

@@ -12,6 +12,8 @@
         LongString = String | (1 << 4),
         Table = 5,
         Closure = 6,
-        ExternalFunction = 7
+        ExternalMethod = 7,
+        ExternalFunction = ExternalMethod | (0 << 4),
+        ExternalAction = ExternalMethod | (1 << 4)
     }
 }

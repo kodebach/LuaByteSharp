@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -62,9 +63,11 @@ namespace LuaByteSharp.Lua
                 throw new NotImplementedException();
             }
 
-            var function = chunk.RootFunction;
-            var retvals = ExecuteFunction(function, new LuaValue[function.MaxStackSize],
-                new[] {new LuaValue(LuaValueType.Table, env)});
+            var retvals = ExecuteClosure(new LuaClosure
+            {
+                Function = chunk.RootFunction,
+                UpValues = {env}
+            });
 #if DEBUG
             Console.WriteLine(
                 $"Function returned: {retvals.Aggregate("{", (current, value) => $"{current} {value},", s => s.TrimEnd(',') + "}")}"
@@ -72,12 +75,21 @@ namespace LuaByteSharp.Lua
 #endif
         }
 
-        private static LuaValue[] ExecuteFunction(LuaFunction function, LuaValue[] regs, IList<LuaValue> upvals)
+        private static LuaValue[] ExecuteClosure(LuaClosure closure)
         {
+            var allRegs = new LuaValue[closure.Function.MaxStackSize];
+            var callStack = new Stack<LuaStackFrame>();
+            var regs = new ArraySlice<LuaValue>(allRegs);
+            var pc = 0;
+
+            newframe:
+            var function = closure.Function;
             var consts = function.Constants;
             var upDescs = function.UpValues;
             var protos = function.Prototypes;
-            for (var pc = 0; pc < function.Code.Length; pc++)
+            var upvals = closure.UpValues;
+
+            for (; pc < function.Code.Length; pc++)
             {
                 var instr = function.Code[pc];
                 var opcode = (OpCode) InstructionMask.GetOpCode(instr);
@@ -191,7 +203,7 @@ namespace LuaByteSharp.Lua
                         var c = InstructionMask.GetArgC(instr);
                         var sizeB = b < 8 ? b : (b & 7) + 8 << (b >> 3) - 1;
                         var sizeC = c < 8 ? c : (c & 7) + 8 << (c >> 3) - 1;
-                        regs[a] = new LuaValue(LuaValueType.Table, new LuaTable(sizeB, sizeC));
+                        regs[a] = new LuaTable(sizeB, sizeC);
                         break;
                     }
                     case OpCode.Self:
@@ -390,9 +402,7 @@ namespace LuaByteSharp.Lua
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
                         var c = InstructionMask.GetArgC(instr);
-                        var args = new LuaValue[c - b + 1];
-                        Array.Copy(regs, b, args, 0, c - b + 1);
-                        regs[a] = LuaValue.Concat(args);
+                        regs[a] = LuaValue.Concat(regs.MoveAndResize(b, c - b + 1));
                         break;
                     }
                     case OpCode.Jmp:
@@ -478,45 +488,89 @@ namespace LuaByteSharp.Lua
 
                         if (regs[a].Type == LuaValueType.Closure)
                         {
-                            var closure = (LuaClosure) regs[a].RawValue;
-                            var args = new LuaValue[closure.Function.MaxStackSize];
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
-                            Array.Copy(regs, a + 1, args, 0, argCount); // TODO inefficent use base/top, don't recur
-                            var retvals = ExecuteFunction(closure.Function, args, closure.UpValues);
-
-                            var retCount = c == 0 ? retvals.Length - a : c - 1;
-                            Array.Copy(retvals, 0, regs, a, retCount); // TODO inefficent use base/top, don't recur
-                        }
-                        else if (regs[a].Type == LuaValueType.ExternalFunction)
-                        {
-                            var del = (Delegate) regs[a].RawValue;
-
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
-                            var args = new LuaValue[argCount];
-                            Array.Copy(regs, a + 1, args, 0, argCount); // TODO inefficent use base/top, don't recur
-                            var retvals = del.DynamicInvoke(new object[] {args});
-                            if (retvals != null)
+                            callStack.Push(new LuaStackFrame
                             {
-                                Array.Copy((Array) retvals, 0, regs, a + 3, c); // TODO use base/top
+                                Basep = regs.Offset,
+                                Size = regs.Count,
+                                RetReg = a,
+                                RetCount = c,
+                                Closure = closure,
+                                SavedPC = pc
+                            });
+                            closure = (LuaClosure) regs[a].RawValue;
+                            var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
+                            var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
+                            var argCount = b == 0 ? regs.Count - (a + 1) : b - 1; // number arguments supplied
+
+                            if (isVarArg)
+                            {
+                                
+                            }
+                            else
+                            {
+                                regs = regs.MoveAndResize(a + 1, parCount, true);
+                                // fill up with nils (in new regs slice)
+                                for (var i = argCount; i < parCount; i++)
+                                {
+                                    regs[i] = LuaValue.Nil;
+                                }
                             }
                         }
-                        else
+
+                        if (regs[a].Type == LuaValueType.ExternalFunction)
                         {
-                            throw new ArgumentException(
-                                "trying to call something that is not a closure or an external function");
+                            var func = regs[a].RawValue as Func<LuaValue[], LuaValue[]>;
+
+                            var argCount = b == 0 ? regs.Count - (a + 1) : b - 1;
+                            var args = regs.MoveAndResize(a + 1, argCount);
+                            var retvals = func.Invoke(args.ToArray());
+                            if (retvals != null)
+                            {
+                                regs.SetAll(retvals, 0, a + 3, c, true);
+                            }
+                            break;
                         }
-                        break;
+
+                        if (regs[a].Type == LuaValueType.ExternalAction)
+                        {
+                            var action = regs[a].RawValue as Action<LuaValue[]>;
+                            var argCount = b == 0 ? regs.Count - (a + 1) : b - 1;
+                            var args = regs.MoveAndResize(a + 1, argCount);
+                            action.Invoke(args.ToArray());
+                            break;
+                        }
+
+                        throw new NotSupportedException("cannot CALL that (metamethods)" + regs[a]);
                     }
                     case OpCode.Return:
                     {
                         CloseUpVals(regs, 0);
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
-                        var retCount = b == 0 ? regs.Length - a : b - 1;
 
-                        var retvals = new LuaValue[retCount];
-                        Array.Copy(regs, a, retvals, 0, retCount);
-                        return retvals; // TODO inefficent use base/top, don't recur
+                        var retCount = b == 0 ? regs.Count - a : b - 1;
+
+                        if (callStack.Count <= 0)
+                        {
+                            // external call
+                            return regs.MoveAndResize(a, retCount).ToArray();
+                        }
+
+                        var parentFrame = callStack.Pop();
+                        var parentRegs = new ArraySlice<LuaValue>(regs.Array, parentFrame.Basep, parentFrame.Size);
+                        if (parentFrame.RetCount == 0)
+                        {
+                            parentRegs.SetAll(regs, a, parentFrame.RetReg, retCount, true);
+                        }
+                        else
+                        {
+                            parentRegs.SetAll(regs, a, parentFrame.RetReg, parentFrame.RetCount - 1, true);
+                        }
+
+                        regs = parentRegs;
+                        closure = parentFrame.Closure;
+                        pc = ++parentFrame.SavedPC;
+                        goto newframe;
                     }
                     case OpCode.ForLoop:
                     {
@@ -543,33 +597,36 @@ namespace LuaByteSharp.Lua
                     {
                         var a = InstructionMask.GetArgA(instr);
                         var c = InstructionMask.GetArgC(instr);
+
                         if (regs[a].Type == LuaValueType.Closure)
                         {
-                            var closure = (LuaClosure) regs[a].RawValue;
-                            var args = new LuaValue[closure.Function.MaxStackSize];
-                            Array.Copy(regs, a + 1, args, 0, 2); // TODO inefficent use base/top, don't recur
-                            var retvals = ExecuteFunction(closure.Function, args, closure.UpValues);
-
-                            Array.Copy(retvals, 0, regs, a + 3, c); // TODO inefficent use base/top, don't recur
+                            callStack.Push(new LuaStackFrame
+                            {
+                                Basep = regs.Offset,
+                                Size = regs.Count,
+                                RetReg = a,
+                                RetCount = c,
+                                Closure = closure,
+                            });
+                            regs = regs.MoveAndResize(a + 1, 2);
+                            closure = (LuaClosure) regs[a].RawValue;
+                            goto newframe;
                         }
-                        else if (regs[a].Type == LuaValueType.ExternalFunction)
-                        {
-                            var del = (Delegate) regs[a].RawValue;
 
-                            var args = new LuaValue[2];
-                            Array.Copy(regs, a + 1, args, 0, 2); // TODO inefficent use base/top, don't recur
-                            var retvals = del.DynamicInvoke(new object[] {args});
+                        if (regs[a].Type == LuaValueType.ExternalFunction)
+                        {
+                            var func = regs[a].RawValue as Func<LuaValue[], LuaValue[]>;
+
+                            var args = regs.MoveAndResize(a + 1, 2);
+                            var retvals = func.Invoke(args.ToArray());
                             if (retvals != null)
                             {
-                                Array.Copy((Array) retvals, 0, regs, a + 3, c); // TODO use base/top
+                                regs.SetAll(retvals, 0, a + 3, c, true);
                             }
+                            break;
                         }
-                        else
-                        {
-                            throw new ArgumentException(
-                                "trying to call something that is not a closure or an external function");
-                        }
-                        break;
+
+                        throw new ArgumentException("cannot TFORCALL that " + regs[a]);
                     }
                     case OpCode.TForLoop:
                     {
@@ -598,7 +655,7 @@ namespace LuaByteSharp.Lua
                         }
                         if (b == 0)
                         {
-                            b = regs.Length - a - 1; // TODO: use top
+                            b = regs.Count - a - 1;
                         }
                         for (var i = 1; i <= b; i++)
                         {
@@ -611,6 +668,10 @@ namespace LuaByteSharp.Lua
                         var a = InstructionMask.GetArgA(instr);
                         var bx = InstructionMask.GetArgBx(instr);
                         regs[a] = CreateClosure(protos[bx], regs, upvals);
+                        break;
+                    }
+                    case OpCode.VarArg:
+                    {
                         break;
                     }
                     case OpCode.ExtraArg:
@@ -628,9 +689,19 @@ namespace LuaByteSharp.Lua
             throw new NotSupportedException("function did not return");
         }
 
+        private struct LuaStackFrame
+        {
+            public LuaClosure Closure;
+            public int Basep;
+            public int Size;
+            public int RetReg;
+            public int RetCount;
+            public int SavedPC;
+        }
+
         private static LuaValue CreateClosure(LuaFunction function, IList<LuaValue> regs, IList<LuaValue> upvals)
         {
-            var closure = new LuaClosure(function);
+            var closure = new LuaClosure {Function = function, UpValues = upvals};
             var len = function.UpValues.Length;
             for (var i = 0; i < len; i++)
             {
@@ -813,15 +884,9 @@ namespace LuaByteSharp.Lua
         }
     }
 
-    internal class LuaClosure
+    internal struct LuaClosure
     {
         public LuaFunction Function;
         public IList<LuaValue> UpValues;
-
-        public LuaClosure(LuaFunction function)
-        {
-            Function = function;
-            UpValues = new LuaValue[function.UpValues.Length];
-        }
     }
 }

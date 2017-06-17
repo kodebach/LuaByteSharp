@@ -158,7 +158,7 @@ namespace LuaByteSharp.Lua
             return new LuaString(bytes);
         }
 
-        public static LuaString Concat(LuaValue[] args)
+        public static LuaString Concat(IList<LuaValue> args)
         {
             return Concat(args.SkipWhile(value => value.IsEmptyString)
                 .Select(value => value.AsString())
@@ -184,6 +184,11 @@ namespace LuaByteSharp.Lua
                 pos += arg._rawValue.Length - 1;
             }
             return new LuaString(newValue);
+        }
+
+        public static implicit operator LuaValue(LuaString str)
+        {
+            return new LuaValue(LuaValueType.LongString, str);
         }
     }
 }

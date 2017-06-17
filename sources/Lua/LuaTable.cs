@@ -73,7 +73,7 @@ namespace LuaByteSharp.Lua
             }
         }
 
-        public bool HasMetaMethods { get; private set; }
+        public bool HasMetaMethods => false;
 
         protected bool Equals(LuaTable other)
         {
@@ -90,11 +90,7 @@ namespace LuaByteSharp.Lua
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return ((_array != null ? _array.GetHashCode() : 0) * 397) ^
-                       (_dictionary != null ? _dictionary.GetHashCode() : 0);
-            }
+            return base.GetHashCode();
         }
 
         public static bool operator ==(LuaTable left, LuaTable right)
@@ -115,6 +111,11 @@ namespace LuaByteSharp.Lua
                 .Aggregate("{",
                     (current, value) => $"{current} [{value.Item1}] = {value.Item2},",
                     s => s.TrimEnd(',') + "}");
+        }
+
+        public static implicit operator LuaValue(LuaTable table)
+        {
+            return new LuaValue(LuaValueType.Table, table);
         }
     }
 }
