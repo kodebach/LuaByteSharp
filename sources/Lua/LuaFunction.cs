@@ -12,7 +12,7 @@ namespace LuaByteSharp.Lua
         public byte MaxStackSize;
         public uint[] Code;
         public LuaValue[] Constants;
-        public LuaUpValue[] UpValues;
+        public LuaUpValueDesc[] UpValueDescs;
 
         public LuaFunction[] Prototypes;
 
@@ -32,7 +32,7 @@ namespace LuaByteSharp.Lua
                 MaxStackSize = reader.ReadByte(),
                 Code = LoadHelper.LoadCode(reader),
                 Constants = LoadHelper.LoadConstants(reader),
-                UpValues = LoadHelper.LoadUpValues(reader)
+                UpValueDescs = LoadHelper.LoadUpValues(reader)
             };
             var sizeP = reader.ReadUInt32();
             function.Prototypes = new LuaFunction[sizeP];

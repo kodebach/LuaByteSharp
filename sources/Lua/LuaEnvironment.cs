@@ -14,10 +14,12 @@ namespace LuaByteSharp.Lua
 
         private void SetUpEnvironment()
         {
-            SetExternalFunction("print", PrintLuaValue);
+            SetExternalAction("print", Print);
+            SetExternalFunction("assert", Assert);
+            SetExternalFunction("error", Error);
         }
 
-        private static void PrintLuaValue(params LuaValue[] values)
+        private static void Print(params LuaValue[] values)
         {
             if (values.Length == 0)
             {
@@ -32,6 +34,29 @@ namespace LuaByteSharp.Lua
                 Console.Write(values[i].ToPrintString());
             }
             Console.WriteLine();
+        }
+
+        private static LuaValue[] Assert(params LuaValue[] values)
+        {
+            if (values.Length == 0)
+            {
+                throw new ArgumentNullException();
+            }
+
+            var v = values[0];
+            var message = values.Length >= 2 ? values[1] : LuaValue.Nil;
+
+            return v.IsFalse ? Error(message) : new[] {v, message};
+        }
+
+        private static LuaValue[] Error(params LuaValue[] values)
+        {
+            if (values.Length == 0)
+            {
+                throw new ArgumentNullException();
+            }
+
+            throw new Exception("ERROR: " + values[0].ToPrintString());
         }
 
         internal override LuaValue this[LuaValue key]
@@ -49,7 +74,7 @@ namespace LuaByteSharp.Lua
             return !_external.ContainsKey(key) ? LuaValue.Nil : _external[key];
         }
 
-        private void SetExternalFunction(string s, Action<LuaValue[]> del)
+        private void SetExternalAction(string s, Action<LuaValue[]> del)
         {
             SetExternal(LuaString.FromString(s), LuaValue.ExternalAction(del));
         }
@@ -62,6 +87,11 @@ namespace LuaByteSharp.Lua
         private void SetExternal(LuaValue key, LuaValue value)
         {
             _external[key] = value;
+        }
+
+        public static implicit operator LuaUpValue(LuaEnvironment env)
+        {
+            return new LuaUpValue(new LuaValue[] {env}, 0);
         }
     }
 }

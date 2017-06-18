@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using FParsec;
 
 namespace LuaByteSharp.Lua
 {
@@ -12,6 +13,7 @@ namespace LuaByteSharp.Lua
         public static LuaString Empty = new LuaString();
 
         private readonly byte[] _rawValue;
+        public const long ShortMax = 0xFF;
 
         public int Length => _rawValue.Length;
 
@@ -57,9 +59,24 @@ namespace LuaByteSharp.Lua
         public bool TryParseInteger(out long v)
         {
             var s = Value.Trim();
-            return Regex.IsMatch(s, "^[-+]0[xX].*")
+            var isInt = Regex.IsMatch(s, "^[-+]?0[xX].*")
                 ? long.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out v)
                 : long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out v);
+            if (isInt)
+            {
+                return true;
+            }
+
+            if (TryParseFloat(out double dv) && Math.Abs(Math.Floor(dv) - dv) < double.Epsilon)
+            {
+                if (dv < long.MaxValue)
+                {
+                    v = Convert.ToInt64(dv);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public double ParseFloat()
@@ -75,22 +92,15 @@ namespace LuaByteSharp.Lua
         public bool TryParseFloat(out double v)
         {
             var s = Value.Trim();
-            var match = Regex.Match(s, "^[-+]0[xX]([0-9A-Fa-f]+)[Pp]([-+][0-9A-Fa-f]+)");
-            if (match.Success)
+            const string hexPattern =
+                "[+-]?((0[xX])?([0-9a-fA-F]+(\\.[0-9a-fA-F]*)?|\\.[0-9a-fA-F]+)([pP][+-]?[0-9]+)?|[iI][nN][fF]([iI][nN][iI][tT][yY])?|[nN][aA][nN])";
+            if (Regex.IsMatch(s, hexPattern))
             {
-                var sign = s.StartsWith("-") ? "-" : "";
-                var ms = match.Groups[1].Value;
-                if (long.TryParse(ms, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long m))
-                {
-                    var es = match.Groups[2].Value;
-                    if (short.TryParse(es, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out short e))
-                    {
-                        s = $"{sign}{m}E{e}";
-                    }
-                }
+                v = HexFloat.DoubleFromHexString(s);
+                return true;
             }
 
-            return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v);
+            return double.TryParse(s, out v);
         }
 
         public static LuaString FromFloat(double v)
@@ -184,11 +194,6 @@ namespace LuaByteSharp.Lua
                 pos += arg._rawValue.Length - 1;
             }
             return new LuaString(newValue);
-        }
-
-        public static implicit operator LuaValue(LuaString str)
-        {
-            return new LuaValue(LuaValueType.LongString, str);
         }
     }
 }

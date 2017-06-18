@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using LuaByteSharp.Lua;
@@ -11,10 +12,25 @@ namespace LuaByteSharp
 
         public static void Main(string[] args)
         {
-            foreach (var file in Directory.EnumerateFiles("tests").Where(s => s.EndsWith(".luac")))
+            foreach (var file in Directory.EnumerateFiles("tests", "*.luac", SearchOption.AllDirectories)
+                .Where(s => s.EndsWith(".luac")))
             {
                 Console.WriteLine($"=== running {file} ===");
-                Interpreter.Run(new[] {file});
+                if (Debugger.IsAttached)
+                {
+                    Interpreter.Run(new[] {file});
+                }
+                else
+                {
+                    try
+                    {
+                        Interpreter.Run(new[] { file });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                }
                 Console.WriteLine("=== done ===");
             }
 

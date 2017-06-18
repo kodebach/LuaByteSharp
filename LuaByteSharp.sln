@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26403.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LuaByteSharp", "LuaByteSharp.csproj", "{12C74571-FFA4-4FC3-A6CE-10EC46EEF194}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dependencies", "..\Dependencies\Dependencies.csproj", "{B355300C-7A83-4666-87D1-8B0BD5B4ECF0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{12C74571-FFA4-4FC3-A6CE-10EC46EEF194}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12C74571-FFA4-4FC3-A6CE-10EC46EEF194}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12C74571-FFA4-4FC3-A6CE-10EC46EEF194}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B355300C-7A83-4666-87D1-8B0BD5B4ECF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B355300C-7A83-4666-87D1-8B0BD5B4ECF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B355300C-7A83-4666-87D1-8B0BD5B4ECF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B355300C-7A83-4666-87D1-8B0BD5B4ECF0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

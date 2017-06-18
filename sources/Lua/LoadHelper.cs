@@ -8,7 +8,7 @@ namespace LuaByteSharp.Lua
         internal static LuaString LoadString(BinaryReader reader)
         {
             long size = reader.ReadByte();
-            if (size == 0xFF)
+            if (size == LuaString.ShortMax)
             {
                 size = reader.ReadInt64();
             }
@@ -26,16 +26,16 @@ namespace LuaByteSharp.Lua
             switch (type)
             {
                 case LuaValueType.Nil:
-                    return new LuaValue(type, null);
+                    return LuaValue.Nil;
                 case LuaValueType.Boolean:
-                    return new LuaValue(type, reader.ReadBoolean());
+                    return reader.ReadBoolean();
                 case LuaValueType.Float:
-                    return new LuaValue(type, reader.ReadDouble());
+                    return new LuaValue(reader.ReadDouble());
                 case LuaValueType.Integer:
-                    return new LuaValue(type, reader.ReadInt64());
+                    return new LuaValue(reader.ReadInt64());
                 case LuaValueType.ShortString:
                 case LuaValueType.LongString:
-                    return new LuaValue(type, LoadString(reader));
+                    return LoadString(reader);
                 default:
                     throw new ArgumentException("unknown constant type");
             }
@@ -63,10 +63,10 @@ namespace LuaByteSharp.Lua
             return buffer;
         }
 
-        public static LuaUpValue[] LoadUpValues(BinaryReader reader)
+        public static LuaUpValueDesc[] LoadUpValues(BinaryReader reader)
         {
             var size = reader.ReadUInt32();
-            var buffer = new LuaUpValue[size];
+            var buffer = new LuaUpValueDesc[size];
             for (var i = 0; i < size; i++)
             {
                 buffer[i] = LoadUpValue(reader);
@@ -74,9 +74,9 @@ namespace LuaByteSharp.Lua
             return buffer;
         }
 
-        private static LuaUpValue LoadUpValue(BinaryReader reader)
+        private static LuaUpValueDesc LoadUpValue(BinaryReader reader)
         {
-            return new LuaUpValue {InStack = reader.ReadBoolean(), Index = reader.ReadByte()};
+            return new LuaUpValueDesc {InStack = reader.ReadBoolean(), Index = reader.ReadByte()};
         }
     }
 }

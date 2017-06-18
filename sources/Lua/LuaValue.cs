@@ -6,21 +6,52 @@ namespace LuaByteSharp.Lua
     internal class LuaValue : IComparable<LuaValue>
     {
         public static readonly LuaValue Nil = new LuaValue(LuaValueType.Nil, null);
-        public static readonly LuaValue Zero = new LuaValue(LuaValueType.Integer, 0);
+        public static readonly LuaValue Zero = new LuaValue(0);
 
         public bool IsNil => Type == LuaValueType.Nil;
-        public bool IsNaN => IsNumber && RawValue is double && double.IsNaN((double) RawValue);
+        public bool IsNaN => IsNumber && RawValue is double && double.IsNaN(Convert.ToDouble(RawValue));
         public bool IsFalse => IsNil || IsNaN;
         public bool IsNumber => Type == LuaValueType.Integer || Type == LuaValueType.Float;
         public bool IsString => Type == LuaValueType.ShortString || Type == LuaValueType.LongString;
 
-        public LuaValue Length => throw new NotImplementedException();
+        public bool IsZero => Type == LuaValueType.Integer && Convert.ToInt64(RawValue) == 0 ||
+                              Type == LuaValueType.Float && Math.Abs(Convert.ToDouble(RawValue)) < double.Epsilon;
+
+        public LuaValue Length
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case LuaValueType.ShortString:
+                    case LuaValueType.LongString:
+                        return new LuaValue(((LuaString) RawValue).Length);
+                    case LuaValueType.Table:
+                        return ((LuaTable) RawValue).Length;
+                    default:
+                        throw new NotSupportedException("metamethods");
+                }
+            }
+        }
+
         public bool IsEmptyString => IsString && ((LuaString) RawValue).IsEmpty;
 
         public readonly LuaValueType Type;
         public readonly object RawValue;
 
-        internal LuaValue(LuaValueType type, object rawValue)
+        internal LuaValue(long value) : this(LuaValueType.Integer, value)
+        {
+        }
+
+        internal LuaValue(bool value) : this(LuaValueType.Boolean, value)
+        {
+        }
+
+        internal LuaValue(double value) : this(LuaValueType.Float, value)
+        {
+        }
+
+        private LuaValue(LuaValueType type, object rawValue)
         {
             Type = type;
             RawValue = rawValue;
@@ -44,15 +75,29 @@ namespace LuaByteSharp.Lua
 
         internal long AsInteger()
         {
+            if (TryAsInteger(out long v))
+            {
+                return v;
+            }
+            throw new InvalidCastException("wrong type");
+        }
+
+        internal bool TryAsInteger(out long value)
+        {
             switch (Type)
             {
+                case LuaValueType.Float:
+                    value = Convert.ToInt64(RawValue);
+                    return Math.Abs(value - Convert.ToDouble(RawValue)) < double.Epsilon;
                 case LuaValueType.Integer:
-                    return (long) RawValue;
+                    value = Convert.ToInt64(RawValue);
+                    return true;
                 case LuaValueType.ShortString:
                 case LuaValueType.LongString:
-                    return ((LuaString) RawValue).ParseInteger();
+                    return ((LuaString) RawValue).TryParseInteger(out value);
                 default:
-                    throw new InvalidCastException("wrong type");
+                    value = -1;
+                    return false;
             }
         }
 
@@ -71,12 +116,11 @@ namespace LuaByteSharp.Lua
             {
                 case LuaValueType.Integer:
                 case LuaValueType.Number:
-                    value = (double) RawValue;
+                    value = Convert.ToDouble(RawValue);
                     return true;
                 case LuaValueType.ShortString:
                 case LuaValueType.LongString:
-                    value = ((LuaString) RawValue).ParseFloat();
-                    return true;
+                    return ((LuaString) RawValue).TryParseFloat(out value);
                 default:
                     value = double.NaN;
                     return false;
@@ -102,12 +146,12 @@ namespace LuaByteSharp.Lua
         {
             if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue + (long) b.RawValue);
+                return new LuaValue((long) a.RawValue + (long) b.RawValue);
             }
 
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, va + vb);
+                return new LuaValue(va + vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -117,12 +161,12 @@ namespace LuaByteSharp.Lua
         {
             if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue - (long) b.RawValue);
+                return new LuaValue((long) a.RawValue - (long) b.RawValue);
             }
 
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, va - vb);
+                return new LuaValue(va - vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -132,12 +176,12 @@ namespace LuaByteSharp.Lua
         {
             if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue * (long) b.RawValue);
+                return new LuaValue((long) a.RawValue * (long) b.RawValue);
             }
 
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, va * vb);
+                return new LuaValue(va * vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -147,12 +191,12 @@ namespace LuaByteSharp.Lua
         {
             if (a.Type == LuaValueType.Integer)
             {
-                return new LuaValue(LuaValueType.Integer, -(long) a.RawValue);
+                return new LuaValue(-(long) a.RawValue);
             }
 
             if (a.TryAsNumber(out double va))
             {
-                return new LuaValue(LuaValueType.Float, -va);
+                return new LuaValue(-va);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -169,7 +213,7 @@ namespace LuaByteSharp.Lua
                 {
                     r += n;
                 }
-                return new LuaValue(LuaValueType.Integer, r);
+                return new LuaValue(r);
             }
 
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
@@ -179,7 +223,7 @@ namespace LuaByteSharp.Lua
                 {
                     r += vb;
                 }
-                return new LuaValue(LuaValueType.Float, r);
+                return new LuaValue(r);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -187,9 +231,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue operator ~(LuaValue a)
         {
-            if (a.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long v))
             {
-                return new LuaValue(LuaValueType.Integer, ~(long) a.RawValue);
+                return new LuaValue(~v);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -202,9 +246,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue operator &(LuaValue a, LuaValue b)
         {
-            if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long va) && b.TryAsInteger(out long vb))
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue & (long) b.RawValue);
+                return new LuaValue(va & vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -212,9 +256,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue operator |(LuaValue a, LuaValue b)
         {
-            if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long va) && b.TryAsInteger(out long vb))
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue | (long) b.RawValue);
+                return new LuaValue(va | vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -222,9 +266,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue operator ^(LuaValue a, LuaValue b)
         {
-            if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long va) && b.TryAsInteger(out long vb))
             {
-                return new LuaValue(LuaValueType.Integer, (long) a.RawValue ^ (long) b.RawValue);
+                return new LuaValue(va ^ vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -234,7 +278,7 @@ namespace LuaByteSharp.Lua
         {
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, Math.Pow(va, vb));
+                return new LuaValue(Math.Pow(va, vb));
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -244,7 +288,7 @@ namespace LuaByteSharp.Lua
         {
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, va / vb);
+                return new LuaValue(va / vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -254,7 +298,7 @@ namespace LuaByteSharp.Lua
         {
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(LuaValueType.Float, Math.Pow(va, vb));
+                return new LuaValue(Math.Pow(va, vb));
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -262,12 +306,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue Shl(LuaValue a, LuaValue b)
         {
-            if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long va) && b.TryAsInteger(out long vb))
             {
-                var vb = (long) b.RawValue;
-                return vb >= sizeof(long) * 8
-                    ? Zero
-                    : new LuaValue(LuaValueType.Integer, (long) a.RawValue << (int) vb);
+                return vb >= sizeof(long) * 8 ? Zero : new LuaValue(va << (int) vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -275,12 +316,9 @@ namespace LuaByteSharp.Lua
 
         public static LuaValue Shr(LuaValue a, LuaValue b)
         {
-            if (a.Type == LuaValueType.Integer && b.Type == LuaValueType.Integer)
+            if (a.TryAsInteger(out long va) && b.TryAsInteger(out long vb))
             {
-                var vb = (long) b.RawValue;
-                return vb >= sizeof(long) * 8
-                    ? Zero
-                    : new LuaValue(LuaValueType.Integer, (long) a.RawValue >> (int) vb);
+                return vb >= sizeof(long) * 8 ? Zero : new LuaValue(va >> (int) vb);
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -353,7 +391,7 @@ namespace LuaByteSharp.Lua
 
             if (Type == LuaValueType.Integer && other.Type == LuaValueType.Integer)
             {
-                return Math.Sign((long) RawValue - (long) other.RawValue);
+                return Math.Sign(Convert.ToInt64(RawValue) - Convert.ToInt64(other.RawValue));
             }
 
             if (IsNumber && other.IsNumber)
@@ -482,14 +520,40 @@ namespace LuaByteSharp.Lua
             return null;
         }
 
+        public static implicit operator LuaValue(LuaString str)
+        {
+            var type = str.Length - 1 < LuaString.ShortMax ? LuaValueType.ShortString : LuaValueType.LongString;
+            return new LuaValue(type, str);
+        }
+
+        public static implicit operator LuaValue(LuaTable table)
+        {
+            return new LuaValue(LuaValueType.Table, table);
+        }
+
+        public static implicit operator LuaValue(LuaClosure closure)
+        {
+            return new LuaValue(LuaValueType.Closure, closure);
+        }
+
         public static LuaValue Concat(IList<LuaValue> args)
         {
-            return new LuaValue(LuaValueType.LongString, LuaString.Concat(args));
+            return LuaString.Concat(args);
         }
 
         public static LuaValue ExternalAction(Action<LuaValue[]> action)
         {
             return new LuaValue(LuaValueType.ExternalAction, action);
+        }
+
+        public void EnsureArraySize(int size)
+        {
+            if (Type != LuaValueType.Table)
+            {
+                throw new InvalidOperationException("not a table");
+            }
+
+            ((LuaTable) RawValue).EnsureArraySize(size);
         }
     }
 }
