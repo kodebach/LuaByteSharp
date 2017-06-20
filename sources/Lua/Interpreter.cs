@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -63,11 +64,13 @@ namespace LuaByteSharp.Lua
                 throw new NotImplementedException();
             }
 
+            var varargs = new LuaValue[0];
+
             var retvals = ExecuteClosure(new LuaClosure
             {
                 Function = chunk.RootFunction,
                 UpValues = new LuaUpValue[] {env}
-            });
+            }, varargs);
 #if DEBUG
             Console.WriteLine(
                 $"Function returned: {retvals.Aggregate("{", (current, value) => $"{current} {value},", s => s.TrimEnd(',') + "}")}"
@@ -75,7 +78,7 @@ namespace LuaByteSharp.Lua
 #endif
         }
 
-        private static IList<LuaValue> ExecuteClosure(LuaClosure closure)
+        private static IList<LuaValue> ExecuteClosure(LuaClosure closure, LuaValue[] varargs)
         {
             var callStack = new Stack<LuaStackFrame>();
             var regs = new LuaValue[closure.Function.MaxStackSize];
@@ -84,10 +87,10 @@ namespace LuaByteSharp.Lua
             newframe:
             var function = closure.Function;
             var consts = function.Constants;
-            var upDescs = function.UpValueDescs;
             var protos = function.Prototypes;
             var upvals = closure.UpValues;
 
+            var openUpValues = new List<LuaUpValue>();
             for (; pc < function.Code.Length; pc++)
             {
                 var instr = function.Code[pc];
@@ -411,7 +414,7 @@ namespace LuaByteSharp.Lua
                         pc += sbx;
                         if (a != 0)
                         {
-                            CloseUpVals(regs, a - 1);
+                            openUpValues = CloseUpVals(openUpValues, a - 1);
                         }
                         break;
                     }
@@ -493,23 +496,34 @@ namespace LuaByteSharp.Lua
                                 RetReg = a,
                                 RetCount = c,
                                 Closure = closure,
-                                SavedPc = pc
+                                SavedPc = pc,
+                                Varargs = varargs
                             });
                             closure = (LuaClosure) regs[a].RawValue;
                             var stackSize = closure.Function.MaxStackSize;
                             var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
                             var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
                             var argCount = b == 0 ? regs.Length - (a + 1) : b - 1; // number arguments supplied
+                            var varargCount = argCount - parCount;
 
-                            if (isVarArg)
+                            var newRegs = new LuaValue[stackSize];
+                            if (isVarArg && varargCount > 0)
                             {
+                                // copy fixed arguments
+                                Array.Copy(regs, a + 1, newRegs, 0, parCount);
+                                regs = newRegs;
+
+                                // copy varargs
+                                var newVarargs = new LuaValue[varargCount];
+                                Array.Copy(regs, a + 1 + parCount, newVarargs, 0, varargCount);
+                                varargs = newVarargs;
                             }
                             else
                             {
-                                var newRegs = new LuaValue[stackSize];
+                                // copy all arguments
                                 Array.Copy(regs, a + 1, newRegs, 0, argCount);
-                                // fill up with nils (in new regs slice)
-                                for (var i = argCount; i < stackSize; i++)
+                                // fill up with nils
+                                for (var i = argCount; i < parCount; i++)
                                 {
                                     newRegs[i] = LuaValue.Nil;
                                 }
@@ -544,9 +558,65 @@ namespace LuaByteSharp.Lua
 
                         throw new NotSupportedException("cannot CALL that (metamethods)" + regs[a]);
                     }
+                    case OpCode.TailCall:
+                    {
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+                        var unused = InstructionMask.GetArgC(instr);
+
+                        if (regs[a].Type == LuaValueType.Closure)
+                        {
+                            //var stackFrame = callStack.Peek();
+                            //callStack.Push(new LuaStackFrame
+                            //{
+                            //    Regs = regs,
+                            //    RetReg = a,
+                            //    RetCount = c,
+                            //    Closure = closure,
+                            //    SavedPc = pc,
+                            //    Varargs = varargs
+                            //});
+                            closure = (LuaClosure) regs[a].RawValue;
+                            var stackSize = closure.Function.MaxStackSize;
+                            var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
+                            var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
+                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1; // number arguments supplied
+                            var varargCount = argCount - parCount;
+
+                            var newRegs = new LuaValue[stackSize];
+                            if (isVarArg && varargCount > 0)
+                            {
+                                // copy fixed arguments
+                                Array.Copy(regs, a + 1, newRegs, 0, parCount);
+                                regs = newRegs;
+
+                                // copy varargs
+                                var newVarargs = new LuaValue[varargCount];
+                                Array.Copy(regs, a + 1 + parCount, newVarargs, 0, varargCount);
+                                varargs = newVarargs;
+                            }
+                            else
+                            {
+                                // copy all arguments
+                                Array.Copy(regs, a + 1, newRegs, 0, argCount);
+                                // fill up with nils
+                                for (var i = argCount; i < parCount; i++)
+                                {
+                                    newRegs[i] = LuaValue.Nil;
+                                }
+                                regs = newRegs;
+                            }
+                            pc = 0;
+                            goto newframe;
+                        }
+
+                        throw new NotSupportedException("cannot TAILCALL that (only closures supported) (metamethods)" +
+                                                        regs[a]);
+                    }
                     case OpCode.Return:
                     {
-                        CloseUpVals(regs, 0);
+                        openUpValues = CloseUpVals(openUpValues, 0);
+                        Debug.Assert(openUpValues.Count == 0, "unclosed upvalue");
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
 
@@ -571,6 +641,7 @@ namespace LuaByteSharp.Lua
                         }
 
                         regs = parentRegs;
+                        varargs = parentFrame.Varargs;
                         closure = parentFrame.Closure;
                         pc = ++parentFrame.SavedPc;
                         goto newframe;
@@ -609,22 +680,34 @@ namespace LuaByteSharp.Lua
                                 RetReg = a,
                                 RetCount = c,
                                 Closure = closure,
-                                SavedPc = pc
+                                SavedPc = pc,
+                                Varargs = varargs
                             });
-                            closure = (LuaClosure)regs[a].RawValue;
+                            closure = (LuaClosure) regs[a].RawValue;
                             var stackSize = closure.Function.MaxStackSize;
                             var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
                             var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
+                            const int argCount = 2; // number arguments supplied
+                            var varargCount = argCount - parCount;
 
-                            if (isVarArg)
+                            var newRegs = new LuaValue[stackSize];
+                            if (isVarArg && varargCount > 0)
                             {
+                                // copy fixed arguments
+                                Array.Copy(regs, a + 1, newRegs, 0, parCount);
+                                regs = newRegs;
+
+                                // copy varargs
+                                var newVarargs = new LuaValue[varargCount];
+                                Array.Copy(regs, a + 1 + parCount, newVarargs, 0, varargCount);
+                                varargs = newVarargs;
                             }
                             else
                             {
-                                var newRegs = new LuaValue[stackSize];
-                                Array.Copy(regs, a + 1, newRegs, 0, 2);
-                                // fill up with nils (in new regs slice)
-                                for (var i = 2; i < stackSize; i++)
+                                // copy all arguments
+                                Array.Copy(regs, a + 1, newRegs, 0, argCount);
+                                // fill up with nils
+                                for (var i = argCount; i < parCount; i++)
                                 {
                                     newRegs[i] = LuaValue.Nil;
                                 }
@@ -689,11 +772,23 @@ namespace LuaByteSharp.Lua
                     {
                         var a = InstructionMask.GetArgA(instr);
                         var bx = InstructionMask.GetArgBx(instr);
-                        regs[a] = CreateClosure(protos[bx], regs, upvals);
+                        var newClosure = CreateClosure(protos[bx], regs, upvals);
+                        openUpValues.AddRange(newClosure.UpValues);
+                        regs[a] = newClosure;
                         break;
                     }
                     case OpCode.VarArg:
                     {
+                        var a = InstructionMask.GetArgA(instr);
+                        var b = InstructionMask.GetArgB(instr);
+
+                        var count = b == 0 ? varargs.Length : b - 1;
+                        Array.Resize(ref regs, a + count);
+                        Array.Copy(varargs, 0, regs, a, count);
+                        for (var i = varargs.Length; i < count; i++)
+                        {
+                            regs[i] = LuaValue.Nil;
+                        }
                         break;
                     }
                     case OpCode.ExtraArg:
@@ -718,9 +813,10 @@ namespace LuaByteSharp.Lua
             public int RetCount;
             public int SavedPc;
             public LuaValue[] Regs;
+            public LuaValue[] Varargs;
         }
 
-        private static LuaValue CreateClosure(LuaFunction function, IList<LuaValue> regs, IList<LuaUpValue> upvals)
+        private static LuaClosure CreateClosure(LuaFunction function, IList<LuaValue> regs, IList<LuaUpValue> upvals)
         {
             var len = function.UpValueDescs.Length;
             var closure = new LuaClosure {Function = function, UpValues = new LuaUpValue[len]};
@@ -738,8 +834,9 @@ namespace LuaByteSharp.Lua
             return closure;
         }
 
-        private static void CloseUpVals(IList<LuaValue> regs, int i)
+        private static List<LuaUpValue> CloseUpVals(List<LuaUpValue> openUpValues, int minIndex)
         {
+            return openUpValues.Where(ov => !ov.Close(minIndex)).ToList();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

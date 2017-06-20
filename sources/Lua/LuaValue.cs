@@ -326,12 +326,12 @@ namespace LuaByteSharp.Lua
 
         public static bool operator ==(LuaValue lhs, LuaValue rhs)
         {
-            return !ReferenceEquals(lhs, null) && lhs.Equals(rhs);
+            return Equals(lhs, rhs);
         }
 
         public static bool operator !=(LuaValue lhs, LuaValue rhs)
         {
-            return ReferenceEquals(lhs, null) || !lhs.Equals(rhs);
+            return !Equals(lhs, rhs);
         }
 
         protected bool Equals(LuaValue other)
@@ -396,7 +396,7 @@ namespace LuaByteSharp.Lua
 
             if (IsNumber && other.IsNumber)
             {
-                return ((double) RawValue).CompareTo((double) other.RawValue);
+                return Convert.ToDouble(RawValue).CompareTo(Convert.ToDouble(RawValue));
             }
 
             throw new NotImplementedException("meta methods not implemented");

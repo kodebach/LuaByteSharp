@@ -12,17 +12,39 @@ namespace LuaByteSharp.Lua
     {
         private readonly IList<LuaValue> _regs;
         private readonly int _index;
+        private LuaValue _value;
 
         public LuaValue Value
         {
-            get => _regs[_index];
-            set => _regs[_index] = value;
+            get => _value ?? _regs[_index];
+            set
+            {
+                if (_value == null)
+                {
+                    _regs[_index] = value;
+                }
+                else
+                {
+                    _value = value;
+                }
+            }
         }
 
         public LuaUpValue(IList<LuaValue> regs, int index)
         {
             _regs = regs;
             _index = index;
+        }
+
+        public bool Close(int minIndex)
+        {
+            if (_index >= minIndex && _value == null)
+            {
+                _value = _regs[_index];
+                return true;
+            }
+
+            return false;
         }
     }
 }
