@@ -1,49 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 
 namespace LuaByteSharp.Lua
 {
-    internal class LuaExternalTable : LuaTable
-    {
-        private readonly Dictionary<LuaValue, LuaValue> _external = new Dictionary<LuaValue, LuaValue>();
-
-        internal override LuaValue this[LuaValue key]
-        {
-            get
-            {
-                var value = base[key];
-                return value.IsNil ? GetExternal(key) : value;
-            }
-            set => base[key] = value;
-        }
-
-        private LuaValue GetExternal(LuaValue key)
-        {
-            return !_external.ContainsKey(key) ? LuaValue.Nil : _external[key];
-        }
-
-        protected void SetExternalAction(string s, Action<LuaValue[]> del)
-        {
-            SetExternal(LuaString.FromString(s), LuaValue.ExternalAction(del));
-        }
-
-        protected void SetExternalFunction(string s, Func<LuaValue[], LuaValue[]> del)
-        {
-            SetExternal(LuaString.FromString(s), LuaValue.ExternalFunction(del));
-        }
-
-        protected void SetExternalValue(string s, LuaValue value)
-        {
-            SetExternal(LuaString.FromString(s), value);
-        }
-
-        private void SetExternal(LuaValue key, LuaValue value)
-        {
-            _external[key] = value;
-        }
-    }
-
     internal class LuaEnvironment : LuaExternalTable
     {
         public LuaEnvironment()
@@ -55,10 +16,11 @@ namespace LuaByteSharp.Lua
         {
             SetExternalAction("print", Print);
             SetExternalFunction("assert", Assert);
-            SetExternalFunction("error", Error);
+            SetExternalAction("error", Error);
 
 
             SetExternalValue("math", new LuaMath());
+            SetExternalValue("utf8", new LuaUTF8());
         }
 
         private static void Print(params LuaValue[] values)
@@ -88,10 +50,16 @@ namespace LuaByteSharp.Lua
             var v = values[0];
             var message = values.Length >= 2 ? values[1] : LuaValue.Nil;
 
-            return v.IsFalse ? Error(message) : new[] {v, message};
+            if (v.IsFalse)
+            {
+                Error(message);
+                return new LuaValue[0];
+            }
+
+            return new[] {v, message};
         }
 
-        private static LuaValue[] Error(params LuaValue[] values)
+        private static void Error(params LuaValue[] values)
         {
             if (values == null || values.Length == 0)
             {
@@ -101,272 +69,200 @@ namespace LuaByteSharp.Lua
             throw new Exception("ERROR: " + values[0].ToPrintString());
         }
 
+        public static void Error(string message)
+        {
+            Error(LuaString.FromString(message));
+        }
+
         public static implicit operator LuaUpValue(LuaEnvironment env)
         {
             return new LuaUpValue(new LuaValue[] {env}, 0);
         }
     }
 
-    internal class LuaMath : LuaExternalTable
+    internal class LuaUTF8 : LuaExternalTable
     {
-        private static readonly LuaValue Huge = new LuaValue(double.PositiveInfinity);
-        private static readonly LuaValue MaxInteger = new LuaValue(long.MaxValue);
-        private static readonly LuaValue MinInteger = new LuaValue(long.MinValue);
-        private static readonly LuaValue Pi = new LuaValue(Math.PI);
-        private static Random _random = new Random();
+        private const string Utf8Pattern = "[\0-\x7F\xC2-\xF4][\x80-\xBF]*";
 
-        public LuaMath()
+        public static readonly LuaValue CharPattern = LuaString.FromString(Utf8Pattern);
+
+        public LuaUTF8()
         {
-            SetExternalFunction("abs", Abs);
-            SetExternalFunction("acos", Acos);
-            SetExternalFunction("asin", Asin);
-            SetExternalFunction("atan", Atan);
-            SetExternalFunction("ceil", Ceil);
-            SetExternalFunction("cos", Cos);
-            SetExternalFunction("deg", Deg);
-            SetExternalFunction("exp", Exp);
-            SetExternalFunction("floor", Floor);
-            SetExternalFunction("fmod", FMod);
-            SetExternalValue("huge", Huge);
-            SetExternalFunction("log", Log);
-            SetExternalFunction("max", Max);
-            SetExternalValue("maxinteger", MaxInteger);
-            SetExternalFunction("min", Min);
-            SetExternalValue("mininteger", MinInteger);
-            SetExternalFunction("modf", ModF);
-            SetExternalValue("pi", Pi);
-            SetExternalFunction("rad", Rad);
-            SetExternalFunction("random", Random);
-            SetExternalAction("randomseed", RandomSeed);
-            SetExternalFunction("sin", Sin);
-            SetExternalFunction("sqrt", Sqrt);
-            SetExternalFunction("tan", Tan);
-            SetExternalFunction("tointeger", ToInteger);
-            SetExternalFunction("type", Type);
-            SetExternalFunction("ult", ULt);
+            SetExternalFunction("char", Char);
+            SetExternalValue("charpattern", CharPattern);
+            SetExternalFunction("codes", Codes);
+            SetExternalFunction("codepoint", CodePoint);
+            SetExternalFunction("len", Len);
+            SetExternalFunction("offset", Offset);
         }
 
-        private static LuaValue[] SingleArgNumberFunc(LuaValue[] args, Func<long, long> integerFunc,
-            Func<double, double> floatFunc)
+        private static bool IsContinuation(byte b)
         {
-            if (args == null || args.Length == 0)
-            {
-                throw new ArgumentNullException();
-            }
-
-            if (args[0].Type == LuaValueType.Integer)
-            {
-                return new[] {new LuaValue(integerFunc(args[0].AsInteger()))};
-            }
-            return new[] {new LuaValue(floatFunc(args[0].AsNumber()))};
+            return (b & 0xC0) == 0x80;
         }
 
-        private static LuaValue[] SingleArgNumberFunc(LuaValue[] args, Func<double, double> numberFunc)
-        {
-            if (args == null || args.Length == 0)
-            {
-                throw new ArgumentNullException();
-            }
-
-            return new[] {new LuaValue(numberFunc(args[0].AsNumber()))};
-        }
-
-        private static LuaValue[] Abs(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Abs, Math.Abs);
-        }
-
-        private static LuaValue[] Acos(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Acos);
-        }
-
-        private static LuaValue[] Asin(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Asin);
-        }
-
-        private static LuaValue[] Atan(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Atan);
-        }
-
-        private static LuaValue[] Ceil(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Ceiling);
-        }
-
-        private static LuaValue[] Cos(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Cos);
-        }
-
-        private static LuaValue[] Deg(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, deg => deg * 180 / Math.PI);
-        }
-
-        private static LuaValue[] Exp(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Exp);
-        }
-
-        private static LuaValue[] Floor(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Floor);
-        }
-
-        private static LuaValue[] FMod(params LuaValue[] args)
-        {
-            if (args == null || args.Length == 0)
-            {
-                throw new ArgumentNullException();
-            }
-
-            var a = args[0].AsNumber();
-            var floor = a < 0 ? Math.Ceiling(a) : Math.Floor(a);
-            return new[] {new LuaValue(Convert.ToInt64(floor)), new LuaValue(a - floor)};
-        }
-
-        private static LuaValue[] Log(params LuaValue[] args)
+        private static LuaValue[] Offset(LuaValue[] args)
         {
             if (args.Length < 2)
             {
-                return SingleArgNumberFunc(args, Math.Log);
+                throw new ArgumentNullException();
             }
 
-            return new[] {new LuaValue(Math.Log(args[0].AsNumber(), args[1].AsNumber()))};
+            var luaString = args[0].AsString();
+
+            var n = args[1].AsInteger();
+
+            var len = luaString.Length;
+            var i = n >= 0 ? 1L : len - 1;
+            if (args.Length > 2)
+            {
+                i = args[2].AsInteger();
+            }
+            i = i >= len ? i : (-i > len ? 0 : len + i + 1);
+            i--;
+
+            if (n == 0)
+            {
+                while (i > 0 && IsContinuation(luaString[(int) i])) i--;
+                return new[] {new LuaValue(i + 1)};
+            }
+            if (IsContinuation(luaString[(int) i]))
+            {
+                LuaEnvironment.Error("initial position is a continuation byte");
+            }
+
+            if (n < 0)
+            {
+                while (n < 0 && i > 0)
+                {
+                    // move back
+                    do
+                    {
+                        // find beginning of previous character
+                        i--;
+                    } while (i > 0 && IsContinuation(luaString[(int) i]));
+                    n++;
+                }
+            }
+            else
+            {
+                n--; // do not move for 1st character
+                while (n > 0 && i < len)
+                {
+                    do
+                    {
+                        // find beginning of next character
+                        i++;
+                    } while (IsContinuation(luaString[(int) i])); // (cannot pass final '\0')
+                    n--;
+                }
+            }
+            return n == 0 ? new[] {new LuaValue(i + 1)} : new[] {LuaValue.Nil};
         }
 
-        private static LuaValue[] Max(params LuaValue[] args)
+        private static LuaValue[] Len(LuaValue[] args)
         {
             if (args.Length == 0)
             {
                 throw new ArgumentNullException();
             }
 
-            return new[] {args.Max()};
+            var luaString = args[0].AsString();
+
+            var i = 1L;
+            if (args.Length > 1)
+            {
+                i = args[1].AsInteger();
+            }
+
+            var j = i;
+            if (args.Length > 2)
+            {
+                j = args[2].AsInteger();
+            }
+
+            return new[] {new LuaValue(Encoding.UTF8.GetCharCount(luaString.Bytes, (int) (i - 1), (int) (j - i + 1)))};
         }
 
-        private static LuaValue[] Min(params LuaValue[] args)
+        private static LuaValue[] CodePoint(LuaValue[] args)
         {
             if (args.Length == 0)
             {
                 throw new ArgumentNullException();
             }
 
-            return new[] {args.Min()};
-        }
+            var luaString = args[0].AsString();
 
-        private static LuaValue[] ModF(params LuaValue[] args)
-        {
-            if (args == null || args.Length <= 1)
+            var i = 1L;
+            if (args.Length > 1)
             {
-                throw new ArgumentNullException();
+                i = args[1].AsInteger();
             }
 
-            var a = args[0].AsNumber();
-            var b = args[1].AsNumber();
-
-            return new[] {new LuaValue(Math.IEEERemainder(a, b))};
-        }
-
-        private static LuaValue[] Rad(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, deg => deg * Math.PI / 180);
-        }
-
-        private static LuaValue[] Random(params LuaValue[] args)
-        {
-            if (args.Length == 0)
+            var j = i;
+            if (args.Length > 2)
             {
-                return new[] {new LuaValue(_random.NextDouble())};
+                j = args[2].AsInteger();
             }
 
-            var min = 1L;
-            var max = args[0].AsInteger();
-
-            if (args.Length >= 2)
+            var codepoints = new LuaValue[j - i + 1];
+            for (var k = 0; k < j - i + 1; k++)
             {
-                min = args[1].AsInteger();
+                codepoints[k] = new LuaValue(DecodeUtf8(luaString.Bytes, (int) (i + k)));
             }
-
-            var buffer = new byte[sizeof(long)];
-            _random.NextBytes(buffer);
-            var rand = BitConverter.ToInt64(buffer, 0);
-            rand = Math.Abs(rand % (max - min) + min);
-            return new[] {new LuaValue(rand)};
+            return codepoints;
         }
 
-        private static void RandomSeed(params LuaValue[] args)
-        {
-            if (args == null || args.Length == 0)
-            {
-                throw new ArgumentNullException();
-            }
-
-            _random = new Random((int) args[0].AsInteger());
-        }
-
-        private static LuaValue[] Sin(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Sin);
-        }
-
-        private static LuaValue[] Sqrt(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Sqrt);
-        }
-
-        private static LuaValue[] Tan(params LuaValue[] args)
-        {
-            return SingleArgNumberFunc(args, Math.Tan);
-        }
-
-        private static LuaValue[] ToInteger(params LuaValue[] args)
+        private static LuaValue[] Codes(LuaValue[] args)
         {
             if (args.Length == 0)
             {
                 throw new ArgumentNullException();
             }
 
-            if (args[0].TryAsInteger(out long val))
-            {
-                return new[] {new LuaValue(val)};
-            }
-
-            return new[] {LuaValue.Nil};
+            return new[] {LuaValue.ExternalFunction(CodesIterator), args[0], LuaValue.Zero};
         }
 
-        private static LuaValue[] Type(params LuaValue[] args)
+        private static LuaValue[] CodesIterator(LuaValue[] args)
+        {
+            var luaString = args[0].AsString();
+            var pos = args[1].AsInteger() - 1;
+            pos++; // goto next byte
+            while (IsContinuation(luaString[(int) pos])) pos++; // skip continuation bytes
+
+            if (pos >= luaString.Length)
+            {
+                return new[] {LuaValue.Nil}; // done
+            }
+
+            return new[] {new LuaValue(pos + 1), new LuaValue(DecodeUtf8(luaString.Bytes, (int) pos))};
+        }
+
+        private static long DecodeUtf8(byte[] bytes, int index)
+        {
+            return char.ConvertToUtf32(Encoding.UTF8.GetString(bytes, index, bytes.Length - index), 0);
+        }
+
+        public static LuaValue[] Char(params LuaValue[] args)
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                return new LuaValue[] {LuaString.Empty};
             }
 
-            switch (args[0].Type)
+            var s = "";
+            foreach (var arg in args)
             {
-                case LuaValueType.Integer:
-                    return new LuaValue[] {LuaString.FromString("integer")};
-                case LuaValueType.Float:
-                    return new LuaValue[] {LuaString.FromString("float")};
-                default:
-                    return new[] {LuaValue.Nil};
+                if (arg.Type != LuaValueType.Integer)
+                {
+                    LuaEnvironment.Error("all arguments have to be integers");
+                    return new LuaValue[0];
+                }
+
+                var i = (int) arg.AsInteger();
+                s += char.ConvertFromUtf32(i);
             }
-        }
-
-        private static LuaValue[] ULt(params LuaValue[] args)
-        {
-            if (args == null || args.Length <= 1)
-            {
-                throw new ArgumentNullException();
-            }
-
-            var a = (ulong) args[0].AsInteger();
-            var b = (ulong) args[1].AsInteger();
-
-            return new[] {new LuaValue(a < b)};
+            return new LuaValue[] {LuaString.FromString(s, Encoding.UTF8)};
         }
     }
 }

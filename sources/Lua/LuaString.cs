@@ -12,25 +12,26 @@ namespace LuaByteSharp.Lua
     {
         public static LuaString Empty = new LuaString();
 
-        private readonly byte[] _rawValue;
         public const long ShortMax = 0xFF;
 
-        public int Length => _rawValue.Length;
+        public int Length => Bytes.Length;
 
         public string Value => ToString();
 
-        public bool IsEmpty => _rawValue == null || _rawValue.Length == 0 ||
-                               _rawValue[0] == '\0' && _rawValue.Length == 1;
+        public bool IsEmpty => Bytes == null || Bytes.Length == 0 ||
+                               Bytes[0] == '\0' && Bytes.Length == 1;
+
+        public byte[] Bytes { get; }
 
         public LuaString(byte[] rawValue)
         {
-            _rawValue = new byte[rawValue.Length + 1];
-            Array.Copy(rawValue, _rawValue, rawValue.Length);
+            Bytes = new byte[rawValue.Length + 1];
+            System.Array.Copy(rawValue, Bytes, rawValue.Length);
         }
 
         private LuaString()
         {
-            _rawValue = null;
+            Bytes = null;
         }
 
         public override string ToString()
@@ -40,7 +41,7 @@ namespace LuaByteSharp.Lua
 
         private string ToEscapedAsciiString()
         {
-            return _rawValue
+            return Bytes
                 .Take(Length - 1)
                 .Select(b => b < 32 ? $"\\{b}" : (b == 127 ? "\\127" : ((char) b).ToString()))
                 .Aggregate("", (current, s) => current + s);
@@ -115,8 +116,8 @@ namespace LuaByteSharp.Lua
 
         protected bool Equals(LuaString other)
         {
-            return !ReferenceEquals(null, other) && _rawValue.Length == other._rawValue.Length &&
-                   _rawValue.SequenceEqual(other._rawValue);
+            return !ReferenceEquals(null, other) && Bytes.Length == other.Bytes.Length &&
+                   Bytes.SequenceEqual(other.Bytes);
         }
 
         public override bool Equals(object obj)
@@ -128,10 +129,10 @@ namespace LuaByteSharp.Lua
 
         public override int GetHashCode()
         {
-            if (_rawValue == null) return 0;
+            if (Bytes == null) return 0;
             unchecked
             {
-                return _rawValue.Aggregate(17, (current, value) => current * 23 + value.GetHashCode());
+                return Bytes.Aggregate(17, (current, value) => current * 23 + value.GetHashCode());
             }
         }
 
@@ -147,24 +148,29 @@ namespace LuaByteSharp.Lua
 
         public int CompareTo(LuaString other)
         {
-            for (var i = 0; i < _rawValue.Length && i < other._rawValue.Length; i++)
+            for (var i = 0; i < Bytes.Length && i < other.Bytes.Length; i++)
             {
-                if (_rawValue[i] < other._rawValue[i])
+                if (Bytes[i] < other.Bytes[i])
                 {
                     return -1;
                 }
-                if (_rawValue[i] > other._rawValue[i])
+                if (Bytes[i] > other.Bytes[i])
                 {
                     return 1;
                 }
             }
 
-            return _rawValue.Length.CompareTo(other._rawValue.Length);
+            return Bytes.Length.CompareTo(other.Bytes.Length);
         }
 
         public static LuaString FromString(string s)
         {
-            var bytes = Encoding.ASCII.GetBytes(s);
+            return FromString(s, Encoding.ASCII);
+        }
+
+        public static LuaString FromString(string s, Encoding encoding)
+        {
+            var bytes = encoding.GetBytes(s);
             return new LuaString(bytes);
         }
 
@@ -185,15 +191,26 @@ namespace LuaByteSharp.Lua
             var first = args[0];
             var length = args.Select(s => s.Length - 1).Sum();
             var newValue = new byte[length];
-            Array.Copy(first._rawValue, newValue, first._rawValue.Length - 1);
-            var pos = first._rawValue.Length - 1;
+            System.Array.Copy(first.Bytes, newValue, first.Bytes.Length - 1);
+            var pos = first.Bytes.Length - 1;
             for (var i = 1; i < args.Count; i++)
             {
                 var arg = args[i];
-                Array.Copy(arg._rawValue, 0, newValue, pos, arg._rawValue.Length - 1);
-                pos += arg._rawValue.Length - 1;
+                System.Array.Copy(arg.Bytes, 0, newValue, pos, arg.Bytes.Length - 1);
+                pos += arg.Bytes.Length - 1;
             }
             return new LuaString(newValue);
+        }
+
+        public string ToString(Encoding encoding)
+        {
+            return encoding.GetString(Bytes);
+        }
+
+        public byte this[int i]
+        {
+            get => Bytes[i];
+            set => Bytes[i] = value;
         }
     }
 }
