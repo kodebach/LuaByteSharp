@@ -8,6 +8,7 @@ namespace LuaByteSharp.Lua
     {
         private LuaValue[] _array;
         private readonly Dictionary<LuaValue, LuaValue> _dictionary;
+        private readonly Dictionary<LuaValue, LuaValue> _nextKeys = new Dictionary<LuaValue, LuaValue>();
 
         protected LuaTable()
         {
@@ -35,6 +36,9 @@ namespace LuaByteSharp.Lua
             }
             set
             {
+                var key = new LuaValue(index);
+                AddKey(key);
+
                 if (index > 0)
                 {
                     if (index > _array.Length)
@@ -45,104 +49,102 @@ namespace LuaByteSharp.Lua
                     return;
                 }
 
-                var key = new LuaValue(index);
                 _dictionary[key] = value;
             }
         }
 
-        internal virtual LuaValue this[LuaValue key]
+        private void AddKey(LuaValue key)
+        {
+            if (!_nextKeys.ContainsKey(key))
+            {
+                if (_nextKeys.ContainsKey(LuaValue.Nil))
+                {
+                    _nextKeys[key] = _nextKeys[LuaValue.Nil];
+                }
+
+                _nextKeys[LuaValue.Nil] = key;
+            }
+        }
+
+        internal LuaValue this[LuaValue key]
         {
             get
             {
-                if (key.IsNil || key.IsNaN)
+                if (HasMetaTable)
                 {
-                    return LuaValue.Nil;
+                    throw new NotImplementedException("metamethods");
                 }
 
-                if (key.Type == LuaValueType.Integer)
-                {
-                    var i = key.AsInteger() - 1;
-                    if (i >= 0 && i < int.MaxValue)
-                    {
-                        return i < _array.Length ? _array[(int) i] : LuaValue.Nil;
-                    }
-                }
-
-                return _dictionary.ContainsKey(key) ? _dictionary[key] : LuaValue.Nil;
+                return RawGet(key);
             }
             set
             {
-                if (key.IsNil || key.IsNaN)
+                AddKey(key);
+                if (HasMetaTable)
                 {
-                    throw new ArgumentException("can't use nil/NaN as key");
+                    throw new NotImplementedException("metamethods");
                 }
 
-                if (key.Type == LuaValueType.Integer)
-                {
-                    var i = key.AsInteger() - 1;
-                    if (i >= 0 && i < int.MaxValue)
-                    {
-                        if (i < _array.Length)
-                        {
-                            _array[(int) i] = value;
-                        }
-                        else
-                        {
-                            Array.Resize(ref _array, (int) (i + 1));
-                            _array[(int) i] = value;
-                        }
-                        return;
-                    }
-                }
-                _dictionary[key] = value;
+                RawSet(key, value);
             }
         }
 
-        public bool HasMetaMethods => false;
+        public bool HasMetaTable => false;
 
         public LuaValue Length
         {
             get
             {
+                if (HasMetaTable)
+                {
+                    throw new NotImplementedException("metamethods");
+                }
+                return new LuaValue(RawLength);
+            }
+        }
+
+        internal long RawLength
+        {
+            get
+            {
                 if (_array.Length == 0 && _dictionary.Count == 0)
                 {
-                    return new LuaValue(0);
+                    return 0;
                 }
+                int j;
+                int i;
                 if (!_array[_array.Length - 1].IsNil)
                 {
                     // no boundary in array -> search in dictonary
                     if (_dictionary.Count == 0)
                     {
-                        return new LuaValue(_array.Length);
+                        return _array.Length;
                     }
-                    var lj = new LuaValue(_array.Length + 1);
-                    var li = new LuaValue(_array.Length);
-                    var l1 = new LuaValue(1);
-                    var l2 = new LuaValue(2);
-                    var lmax = new LuaValue(int.MaxValue / 2);
-                    while (!this[lj].IsNil)
+                    j = _array.Length + 1;
+                    i = _array.Length;
+                    while (!this[j].IsNil)
                     {
-                        li = lj;
-                        if (lj > lmax)
+                        i = j;
+                        if (j > int.MaxValue / 2)
                         {
-                            li = l1;
-                            while (!this[li].IsNil) li += l1;
-                            return li - l1;
+                            i = 1;
+                            while (!this[i].IsNil) i += 1;
+                            return i - 1;
                         }
-                        lj *= l2;
+                        j *= 2;
                     }
-                    while (lj - li > l1)
+                    while (j - i > 1)
                     {
-                        var lm = (li + lj) / l2;
-                        if (this[lm].IsNil) lj = lm;
-                        else li = lm;
+                        var lm = (i + j) / 2;
+                        if (this[lm].IsNil) j = lm;
+                        else i = lm;
                     }
-                    return li;
+                    return i;
                 }
 
                 // do binary search to find boundary
-                var j = _array.Length;
-                var i = 0;
+                j = _array.Length;
+                i = 0;
                 while (j - i > 1)
                 {
                     var m = (i + j) / 2;
@@ -155,14 +157,14 @@ namespace LuaByteSharp.Lua
                         i = m;
                     }
                 }
-                return new LuaValue(i);
+                return i;
             }
         }
 
         protected bool Equals(LuaTable other)
         {
             if (ReferenceEquals(this, other)) return true;
-            throw new NotImplementedException("meta methods not implemented");
+            throw new NotImplementedException("metamethods not implemented");
         }
 
         public override bool Equals(object obj)
@@ -205,6 +207,72 @@ namespace LuaByteSharp.Lua
             }
 
             Array.Resize(ref _array, size);
+        }
+
+        public virtual LuaValue RawGet(LuaValue key)
+        {
+            if (key.IsNil || key.IsNaN)
+            {
+                return LuaValue.Nil;
+            }
+
+            if (key.Type == LuaValueType.Integer)
+            {
+                var i = key.AsInteger() - 1;
+                if (i >= 0 && i < int.MaxValue)
+                {
+                    return i < _array.Length ? _array[(int) i] : LuaValue.Nil;
+                }
+            }
+
+            return _dictionary.ContainsKey(key) ? _dictionary[key] : LuaValue.Nil;
+        }
+
+        public void RawSet(LuaValue key, LuaValue value)
+        {
+            if (key.IsNil || key.IsNaN)
+            {
+                throw new ArgumentException("can't use nil/NaN as key");
+            }
+
+            if (key.Type == LuaValueType.Integer)
+            {
+                var i = key.AsInteger() - 1;
+                if (i >= 0 && i < int.MaxValue)
+                {
+                    if (i < _array.Length)
+                    {
+                        _array[(int) i] = value;
+                    }
+                    else
+                    {
+                        Array.Resize(ref _array, (int) (i + 1));
+                        _array[(int) i] = value;
+                    }
+                    return;
+                }
+            }
+            _dictionary[key] = value;
+        }
+
+        public LuaValue Next(LuaValue key)
+        {
+            if (!_nextKeys.ContainsKey(key))
+            {
+                return LuaValue.Nil;
+            }
+
+            var nextKey = _nextKeys[key];
+            while (this[nextKey].IsNil)
+            {
+                if (!_nextKeys.ContainsKey(key))
+                {
+                    return LuaValue.Nil;
+                }
+                nextKey = _nextKeys[key];
+            }
+
+            return nextKey;
         }
     }
 }

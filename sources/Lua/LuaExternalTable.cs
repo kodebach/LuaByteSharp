@@ -7,14 +7,10 @@ namespace LuaByteSharp.Lua
     {
         private readonly Dictionary<LuaValue, LuaValue> _external = new Dictionary<LuaValue, LuaValue>();
 
-        internal override LuaValue this[LuaValue key]
+        public override LuaValue RawGet(LuaValue key)
         {
-            get
-            {
-                var value = base[key];
-                return value.IsNil ? GetExternal(key) : value;
-            }
-            set => base[key] = value;
+            var value = base.RawGet(key);
+            return value.IsNil ? GetExternal(key) : value;
         }
 
         private LuaValue GetExternal(LuaValue key)

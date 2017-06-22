@@ -21,16 +21,11 @@ namespace LuaByteSharp.Lua
         {
             get
             {
-                switch (Type)
+                if (HasMetaTable)
                 {
-                    case LuaValueType.ShortString:
-                    case LuaValueType.LongString:
-                        return new LuaValue(((LuaString) RawValue).Length);
-                    case LuaValueType.Table:
-                        return ((LuaTable) RawValue).Length;
-                    default:
-                        throw new NotSupportedException("metamethods");
+                    throw new NotSupportedException("metamethods");
                 }
+                return new LuaValue(RawLength);
             }
         }
 
@@ -38,6 +33,10 @@ namespace LuaByteSharp.Lua
 
         public readonly LuaValueType Type;
         public readonly object RawValue;
+        private bool _hasMetaTable = false;
+        public static readonly LuaValue One = new LuaValue(1);
+
+        public bool HasMetaTable => Type == LuaValueType.Table && ((LuaTable) RawValue).HasMetaTable || _hasMetaTable;
 
         internal LuaValue(long value) : this(LuaValueType.Integer, value)
         {
@@ -336,38 +335,12 @@ namespace LuaByteSharp.Lua
 
         protected bool Equals(LuaValue other)
         {
-            if (Type == other.Type)
+            if (HasMetaTable)
             {
-                if (Type == LuaValueType.Table)
-                {
-                    return ReferenceEquals(this, other);
-                }
-
-                return Type == LuaValueType.Nil || Type != LuaValueType.ExternalFunction &&
-                       Equals(RawValue, other.RawValue);
+                throw new NotImplementedException("metamethods");
             }
 
-            if (!IsNumber || !other.IsNumber)
-            {
-                return false;
-            }
-
-            if (Type == LuaValueType.Integer)
-            {
-                var otherFloor = Math.Floor((double) other.RawValue);
-                if (Math.Abs((double) other.RawValue - otherFloor) < double.Epsilon)
-                {
-                    return (long) RawValue == (long) otherFloor;
-                }
-            }
-
-            var floor = Math.Floor((double) RawValue);
-            if (Math.Abs((double) RawValue - floor) < double.Epsilon)
-            {
-                return (long) other.RawValue == (long) floor;
-            }
-
-            return Math.Abs((double) RawValue - (double) other.RawValue) < double.Epsilon;
+            return RawEquals(other);
         }
 
         public override bool Equals(object obj)
@@ -425,32 +398,16 @@ namespace LuaByteSharp.Lua
 
         public LuaValue this[int index]
         {
-            get
-            {
-                if (Type == LuaValueType.Table)
-                {
-                    var table = (LuaTable) RawValue;
-                    if (!table.HasMetaMethods)
-                    {
-                        return table[index];
-                    }
-                }
-
-                throw new NotImplementedException("metamethods not supported");
-            }
             set
             {
                 if (Type == LuaValueType.Table)
                 {
                     var table = (LuaTable) RawValue;
-                    if (!table.HasMetaMethods)
-                    {
-                        table[index] = value;
-                        return;
-                    }
+                    table[index] = value;
+                    return;
                 }
 
-                throw new NotImplementedException("metamethods not supported");
+                throw new NotSupportedException("has to be table");
             }
         }
 
@@ -458,23 +415,19 @@ namespace LuaByteSharp.Lua
         {
             get
             {
-                if (Type == LuaValueType.Table)
+                if (HasMetaTable)
                 {
-                    var table = (LuaTable) RawValue;
-                    if (!table.HasMetaMethods)
-                    {
-                        return table[index];
-                    }
+                    throw new NotImplementedException("metamethods not supported");
                 }
 
-                throw new NotImplementedException("metamethods not supported");
+                return RawGet(index);
             }
             set
             {
                 if (Type == LuaValueType.Table)
                 {
                     var table = (LuaTable) RawValue;
-                    if (!table.HasMetaMethods)
+                    if (!table.HasMetaTable)
                     {
                         table[index] = value;
                         return;
@@ -554,6 +507,82 @@ namespace LuaByteSharp.Lua
             }
 
             ((LuaTable) RawValue).EnsureArraySize(size);
+        }
+
+        public bool RawEquals(LuaValue other)
+        {
+            if (Type == other.Type)
+            {
+                if (Type == LuaValueType.Table)
+                {
+                    return ReferenceEquals(this, other);
+                }
+
+                return Type == LuaValueType.Nil || Type != LuaValueType.ExternalFunction &&
+                       Equals(RawValue, other.RawValue);
+            }
+
+            if (!IsNumber || !other.IsNumber)
+            {
+                return false;
+            }
+
+            if (Type == LuaValueType.Integer)
+            {
+                var otherFloor = Math.Floor((double) other.RawValue);
+                if (Math.Abs((double) other.RawValue - otherFloor) < double.Epsilon)
+                {
+                    return (long) RawValue == (long) otherFloor;
+                }
+            }
+
+            var floor = Math.Floor((double) RawValue);
+            if (Math.Abs((double) RawValue - floor) < double.Epsilon)
+            {
+                return (long) other.RawValue == (long) floor;
+            }
+
+            return Math.Abs((double) RawValue - (double) other.RawValue) < double.Epsilon;
+        }
+
+        public long RawLength
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case LuaValueType.ShortString:
+                    case LuaValueType.LongString:
+                        return ((LuaString) RawValue).Length;
+                    case LuaValueType.Table:
+                        return ((LuaTable) RawValue).RawLength;
+                    default:
+                        throw new NotSupportedException("cannot get length");
+                }
+            }
+        }
+
+        public LuaValue RawGet(LuaValue index)
+        {
+            if (Type == LuaValueType.Table)
+            {
+                var table = (LuaTable) RawValue;
+                return table.RawGet(index);
+            }
+
+            throw new NotSupportedException("not a table");
+        }
+
+        public LuaValue RawSet(LuaValue index, LuaValue value)
+        {
+            if (Type == LuaValueType.Table)
+            {
+                var table = (LuaTable) RawValue;
+                table.RawSet(index, value);
+                return table;
+            }
+
+            throw new NotSupportedException("not a table");
         }
     }
 }
