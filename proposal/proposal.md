@@ -99,7 +99,7 @@ Auch die Funktionen `string.pack`, `string.packsize` und `string.unpack` werden 
 
 | Gruppe                | Funktionen                                                                                    | Aufwand   |
 |---                    |---                                                                                            |---        |
-| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`, `rawset`, `select`, `tonumber`, `tostring`, `type`, `_VERSION` | 10 h      |
+| Basis Funktionen      | `assert`, `error`, `_G`, `getmetatable`, `ipairs`, `next`, `pairs`, `print`, `rawequal`, `rawget`, `rawlen`, `rawset`, `select`, `setmetatable`, `tonumber`, `tostring`, `type`, `_VERSION` | 10 h      |
 | String Manipulation   | `string.byte`, `string.char`, `string.find`, `string.format`, `string.gmatch`, `string.gsub`, `string.len`, `string.lower`, `string. match`, `string.rep`, `string.reverse`, `string.sub`, `string.upper` | 15 h      |
 | Mathematik            | `math.abs`, `math.acos`, `math.asin`, `math.atan`, `math.ceil`, `math.cos`, `math.deg`, `math.exp`, `math.floor`, `math.fmod`, `math.huge`, `math.log`, `math.max`, `math.maxinteger`, `math.min`, `math.mininteger`, `math.modf`, `math.pi`, `math.rad`, `math.random`, `math.randomseed`, `math.sin`, `math.sqrt`, `math.tan`, `math.tointeger`, `math.type`, `math.ult` | 5 h       |
 | Table Manipulation    | `table.concat`, `table.insert`, `table.move`, `table.pack`, `table.remove`, `table.pack`, `table.remove`, `table.sort`, `table.unpack` | 5 h       |
