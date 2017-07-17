@@ -1,15 +1,15 @@
 using System;
 using System.Text;
 
-namespace LuaByteSharp.Lua
+namespace LuaByteSharp.Lua.Libraries
 {
-    internal class LuaUtf8 : LuaExternalTable
+    internal class LuaLibUtf8 : LuaExternalTable
     {
         private const string Utf8Pattern = "[\0-\x7F\xC2-\xF4][\x80-\xBF]*";
 
         public static readonly LuaValue CharPattern = LuaString.FromString(Utf8Pattern);
 
-        public LuaUtf8()
+        public LuaLibUtf8()
         {
             SetExternalFunction("char", Char);
             SetExternalValue("charpattern", CharPattern);

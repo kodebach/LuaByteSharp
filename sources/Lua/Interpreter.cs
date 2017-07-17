@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using LuaByteSharp.Lua.Libraries;
 
 namespace LuaByteSharp.Lua
 {
@@ -85,6 +86,7 @@ namespace LuaByteSharp.Lua
             var callStack = new Stack<LuaStackFrame>();
             var regs = new LuaValue[closure.Function.MaxStackSize];
             var pc = 0;
+            var top = regs.Length;
 
             newframe:
             var function = closure.Function;
@@ -496,28 +498,34 @@ namespace LuaByteSharp.Lua
                             {
                                 Regs = regs,
                                 RetReg = a,
-                                RetCount = c,
+                                RetCount = c == 0 ? 0 : c - 1,
                                 Closure = closure,
                                 SavedPc = pc,
-                                Varargs = varargs
+                                Varargs = varargs,
+                                Top = top
                             });
                             closure = (LuaClosure) regs[a].RawValue;
                             var stackSize = closure.Function.MaxStackSize;
                             var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
                             var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1; // number arguments supplied
+                            var argCount = b == 0 ? top - (a + 1) : b - 1; // number arguments supplied
                             var varargCount = argCount - parCount;
 
                             var newRegs = new LuaValue[stackSize];
                             if (isVarArg && varargCount > 0)
                             {
                                 // copy fixed arguments
-                                Array.Copy(regs, a + 1, newRegs, 0, parCount);
-                                regs = newRegs;
+                                Array.Copy(regs, a + 1, newRegs, 0, Math.Min(top, parCount));
+                                for (var i = top; i < parCount; i++)
+                                {
+                                    regs[a + 1 + i] = LuaValue.Nil;
+                                }
 
                                 // copy varargs
                                 var newVarargs = new LuaValue[varargCount];
                                 Array.Copy(regs, a + 1 + parCount, newVarargs, 0, varargCount);
+
+                                regs = newRegs;
                                 varargs = newVarargs;
                             }
                             else
@@ -539,22 +547,36 @@ namespace LuaByteSharp.Lua
                         {
                             var func = regs[a].RawValue as Func<LuaValue[], LuaValue[]>;
 
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
+                            var argCount = b == 0 ? top - (a + 1) : b - 1;
                             var args = new ArraySlice<LuaValue>(regs, a + 1, argCount);
                             var retvals = func.Invoke(args.ToArray());
-                            var retCount = c == 0 ? retvals.Length : c - 1;
-                            Array.Copy(retvals, 0, regs, a, Math.Min(retCount, retvals.Length));
-                            for (var i = retvals.Length; i < retCount; i++)
+                            if (c == 0)
                             {
-                                regs[a + i] = LuaValue.Nil;
+                                top = a + retvals.Length;
+                                if (regs.Length < top)
+                                {
+                                    Array.Resize(ref regs, top);
+                                }
+
+                                Array.Copy(retvals, 0, regs, a, retvals.Length);
                             }
+                            else
+                            {
+                                var count = Math.Min(retvals.Length, c - 1);
+                                Array.Copy(retvals, 0, regs, a, count);
+                                for (var i = retvals.Length; i < count; i++)
+                                {
+                                    regs[a + i] = LuaValue.Nil;
+                                }
+                            }
+
                             break;
                         }
 
                         if (regs[a].Type == LuaValueType.ExternalAction)
                         {
                             var action = regs[a].RawValue as Action<LuaValue[]>;
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1;
+                            var argCount = b == 0 ? top - (a + 1) : b - 1;
                             var args = new ArraySlice<LuaValue>(regs, a + 1, argCount);
                             action.Invoke(args.ToArray());
                             break;
@@ -574,7 +596,7 @@ namespace LuaByteSharp.Lua
                             var stackSize = closure.Function.MaxStackSize;
                             var parCount = closure.Function.ParameterCount; // number of fixed arguments accepted
                             var isVarArg = closure.Function.IsVarArg; // accepts vararg arguments?
-                            var argCount = b == 0 ? regs.Length - (a + 1) : b - 1; // number arguments supplied
+                            var argCount = b == 0 ? top - (a + 1) : b - 1; // number arguments supplied
                             var varargCount = argCount - parCount;
 
                             var newRegs = new LuaValue[stackSize];
@@ -614,7 +636,7 @@ namespace LuaByteSharp.Lua
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
 
-                        var retCount = b == 0 ? regs.Length - a : b - 1;
+                        var retCount = b == 0 ? top - a : b - 1;
 
                         if (callStack.Count <= 0)
                         {
@@ -626,13 +648,23 @@ namespace LuaByteSharp.Lua
                         var parentRegs = parentFrame.Regs;
                         if (parentFrame.RetCount == 0)
                         {
+                            top = parentFrame.RetReg + retCount;
+
+                            if (parentRegs.Length < top)
+                            {
+                                Array.Resize(ref parentRegs, top);
+                            }
+
                             Array.Copy(regs, a, parentRegs, parentFrame.RetReg, retCount);
-                            Array.Resize(ref parentFrame.Regs, parentFrame.RetReg + retCount);
                         }
                         else
                         {
-                            var count = Math.Min(retCount, parentFrame.RetCount - 1);
+                            var count = Math.Min(retCount, parentFrame.RetCount);
                             Array.Copy(regs, a, parentRegs, parentFrame.RetReg, count);
+                            for (var i = retCount; i < parentFrame.RetCount; i++)
+                            {
+                                parentRegs[parentFrame.RetReg + i] = LuaValue.Nil;
+                            }
                         }
 
                         regs = parentRegs;
@@ -717,12 +749,15 @@ namespace LuaByteSharp.Lua
 
                             var args = new ArraySlice<LuaValue>(regs, a + 1, 2);
                             var retvals = func.Invoke(args.ToArray());
-                            var retCount = c;
-                            Array.Copy(retvals, 0, regs, a + 3, Math.Min(retCount, retvals.Length));
-                            for (var i = retvals.Length; i < retCount; i++)
+
+                            var count = Math.Min(retvals.Length, c);
+                            Array.Copy(retvals, 0, regs, a + 3, count);
+                            for (var i = retvals.Length; i < count; i++)
                             {
-                                regs[a + i] = LuaValue.Nil;
+                                regs[a + 3 + i] = LuaValue.Nil;
                             }
+
+
                             break;
                         }
 
@@ -755,7 +790,7 @@ namespace LuaByteSharp.Lua
                         }
                         if (b == 0)
                         {
-                            b = regs.Length - a - 1;
+                            b = top - a - 1;
                         }
                         regs[a].EnsureArraySize((c - 1) * FIELDS_PER_FLUSH + b);
                         for (var i = 1; i <= b; i++)
@@ -779,7 +814,7 @@ namespace LuaByteSharp.Lua
                         var b = InstructionMask.GetArgB(instr);
 
                         var count = b == 0 ? varargs.Length : b - 1;
-                        Array.Resize(ref regs, a + count);
+                        top = a + count;
                         Array.Copy(varargs, 0, regs, a, count);
                         for (var i = varargs.Length; i < count; i++)
                         {
@@ -810,6 +845,7 @@ namespace LuaByteSharp.Lua
             public int SavedPc;
             public LuaValue[] Regs;
             public LuaValue[] Varargs;
+            public int Top;
         }
 
         private static LuaClosure CreateClosure(LuaFunction function, IList<LuaValue> regs, IList<LuaUpValue> upvals)
@@ -864,6 +900,12 @@ namespace LuaByteSharp.Lua
         private static Arguments ParseArgs(string[] args)
         {
             var a = new Arguments();
+            if (args.Length == 0)
+            {
+                a.Help = true;
+                return a;
+            }
+
             if (args.Contains("-h") || args.Contains("--help") || args.Contains("-?"))
             {
                 a.Help = true;

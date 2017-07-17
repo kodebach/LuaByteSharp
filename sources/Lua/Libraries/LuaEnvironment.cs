@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LuaByteSharp.Lua
+namespace LuaByteSharp.Lua.Libraries
 {
     internal class LuaEnvironment : LuaExternalTable
     {
@@ -31,8 +31,10 @@ namespace LuaByteSharp.Lua
             SetExternalValue("_VERSION", Interpreter.Version);
 
 
-            SetExternalValue("math", new LuaMath());
-            SetExternalValue("utf8", new LuaUtf8());
+            SetExternalValue("math", new LuaLibMath());
+            SetExternalValue("utf8", new LuaLibUtf8());
+            SetExternalValue("string", new LuaLibString());
+            SetExternalValue("table", new LuaLibTable());
         }
 
         private static LuaValue[] Pairs(LuaValue[] args)
@@ -69,8 +71,10 @@ namespace LuaByteSharp.Lua
                 return new[] {LuaValue.Nil};
             }
 
-            var index = args.Length >= 1 ? args[1] : LuaValue.Nil;
-            return new[] {((LuaTable) args[0].RawValue).Next(index)};
+            var index = args.Length >= 2 ? args[1] : LuaValue.Nil;
+            var table = (LuaTable) args[0].RawValue;
+            var key = table.Next(index);
+            return new[] {key, table[key]};
         }
 
         private static LuaValue[] IPairs(LuaValue[] args)

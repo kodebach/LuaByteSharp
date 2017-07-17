@@ -55,15 +55,13 @@ namespace LuaByteSharp.Lua
 
         private void AddKey(LuaValue key)
         {
-            if (!_nextKeys.ContainsKey(key))
+            if (_nextKeys.ContainsKey(key))
             {
-                if (_nextKeys.ContainsKey(LuaValue.Nil))
-                {
-                    _nextKeys[key] = _nextKeys[LuaValue.Nil];
-                }
-
-                _nextKeys[LuaValue.Nil] = key;
+                return;
             }
+
+            _nextKeys[key] = _nextKeys.ContainsKey(LuaValue.Nil) ? _nextKeys[LuaValue.Nil] : LuaValue.Nil;
+            _nextKeys[LuaValue.Nil] = key;
         }
 
         internal LuaValue this[LuaValue key]
@@ -113,7 +111,7 @@ namespace LuaByteSharp.Lua
                 }
                 int j;
                 int i;
-                if (!_array[_array.Length - 1].IsNil)
+                if (_array.Length == 0 || !_array[_array.Length - 1].IsNil)
                 {
                     // no boundary in array -> search in dictonary
                     if (_dictionary.Count == 0)
@@ -219,9 +217,9 @@ namespace LuaByteSharp.Lua
             if (key.Type == LuaValueType.Integer)
             {
                 var i = key.AsInteger() - 1;
-                if (i >= 0 && i < int.MaxValue)
+                if (i >= 0 && i < int.MaxValue && i < _array.Length)
                 {
-                    return i < _array.Length ? _array[(int) i] : LuaValue.Nil;
+                    return _array[(int) i] ?? LuaValue.Nil;
                 }
             }
 
@@ -265,14 +263,61 @@ namespace LuaByteSharp.Lua
             var nextKey = _nextKeys[key];
             while (this[nextKey].IsNil)
             {
-                if (!_nextKeys.ContainsKey(key))
+                if (nextKey.IsNil || !_nextKeys.ContainsKey(nextKey))
                 {
                     return LuaValue.Nil;
                 }
-                nextKey = _nextKeys[key];
+                nextKey = _nextKeys[nextKey];
             }
 
             return nextKey;
+        }
+
+        public void Insert(long pos, LuaValue value)
+        {
+            if (_dictionary.Count == 0 && 1 < pos && pos <= _array.Length)
+            {
+                Array.Resize(ref _array, _array.Length + 1);
+                Array.Copy(_array, (int) (pos - 1), _array, (int) pos, (int) (_array.Length - pos));
+                _array[(int) pos] = value;
+            }
+
+            while (pos <= Length.AsInteger())
+            {
+                var key = new LuaValue(pos);
+                var current = this[key];
+                this[key] = value;
+                value = current;
+                pos++;
+            }
+            this[new LuaValue(pos)] = value;
+        }
+
+        public LuaValue Remove(long pos)
+        {
+            var removed = this[new LuaValue(pos)];
+
+            if (1 <= pos && pos <= Length.AsInteger())
+            {
+                if (_dictionary.Count == 0 && 1 < pos && pos <= _array.Length)
+                {
+                    Array.Copy(_array, (int) pos, _array, (int) (pos - 1), (int) (_array.Length - pos));
+                    Array.Resize(ref _array, _array.Length - 1);
+                }
+
+                while (pos < Length.AsInteger())
+                {
+                    this[new LuaValue(pos)] = this[new LuaValue(pos + 1)];
+                    pos++;
+                }
+                this[Length] = LuaValue.Nil;
+            }
+            else
+            {
+                this[new LuaValue(pos)] = LuaValue.Nil;
+            }
+
+            return removed;
         }
     }
 }

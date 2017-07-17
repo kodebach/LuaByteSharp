@@ -86,8 +86,18 @@ namespace LuaByteSharp.Lua
             switch (Type)
             {
                 case LuaValueType.Float:
-                    value = Convert.ToInt64(RawValue);
-                    return Math.Abs(value - Convert.ToDouble(RawValue)) < double.Epsilon;
+                    var floor = Math.Floor((double) RawValue);
+                    if (Math.Abs(floor - Convert.ToDouble(RawValue)) < double.Epsilon &&
+                        Math.Abs(floor) < long.MaxValue)
+                    {
+                        value = Convert.ToInt64(floor);
+                        return true;
+                    }
+                    else
+                    {
+                        value = 0;
+                        return false;
+                    }
                 case LuaValueType.Integer:
                     value = Convert.ToInt64(RawValue);
                     return true;
@@ -297,7 +307,7 @@ namespace LuaByteSharp.Lua
         {
             if (a.TryAsNumber(out double va) && b.TryAsNumber(out double vb))
             {
-                return new LuaValue(Math.Pow(va, vb));
+                return new LuaValue(Math.Floor(va / vb));
             }
 
             throw new NotImplementedException("metamethods not supported");
@@ -352,7 +362,16 @@ namespace LuaByteSharp.Lua
 
         public override int GetHashCode()
         {
-            return Type == LuaValueType.Nil ? 0 : RawValue.GetHashCode();
+            switch (Type)
+            {
+                case LuaValueType.Nil:
+                    return 0;
+                case LuaValueType.Float:
+                case LuaValueType.Integer:
+                    return 1;
+                default:
+                    return RawValue.GetHashCode();
+            }
         }
 
         public int CompareTo(LuaValue other)
@@ -369,7 +388,39 @@ namespace LuaByteSharp.Lua
 
             if (IsNumber && other.IsNumber)
             {
-                return Convert.ToDouble(RawValue).CompareTo(Convert.ToDouble(RawValue));
+                return Convert.ToDouble(RawValue).CompareTo(Convert.ToDouble(other.RawValue));
+            }
+
+            if (IsString && other.IsNumber)
+            {
+                if (TryAsInteger(out long v))
+                {
+                    if (other.Type == LuaValueType.Integer)
+                    {
+                        return Math.Sign(v - Convert.ToInt64(other.RawValue));
+                    }
+                }
+
+                if (TryAsNumber(out double d))
+                {
+                    return d.CompareTo(Convert.ToDouble(other.RawValue));
+                }
+            }
+
+            if (IsNumber && other.IsString)
+            {
+                if (other.TryAsInteger(out long v))
+                {
+                    if (other.Type == LuaValueType.Integer)
+                    {
+                        return Math.Sign(Convert.ToInt64(RawValue) - v);
+                    }
+                }
+
+                if (other.TryAsNumber(out double d))
+                {
+                    return Convert.ToDouble(RawValue).CompareTo(d);
+                }
             }
 
             throw new NotImplementedException("meta methods not implemented");
@@ -529,20 +580,21 @@ namespace LuaByteSharp.Lua
 
             if (Type == LuaValueType.Integer)
             {
-                var otherFloor = Math.Floor((double) other.RawValue);
-                if (Math.Abs((double) other.RawValue - otherFloor) < double.Epsilon)
+                var otherFloor = Math.Floor(Convert.ToDouble(other.RawValue));
+                if (Math.Abs(Convert.ToDouble(other.RawValue) - otherFloor) < double.Epsilon &&
+                    Math.Abs(otherFloor) < long.MaxValue)
                 {
-                    return (long) RawValue == (long) otherFloor;
+                    return Convert.ToInt64(RawValue) == Convert.ToInt64(otherFloor);
                 }
             }
 
-            var floor = Math.Floor((double) RawValue);
-            if (Math.Abs((double) RawValue - floor) < double.Epsilon)
+            var floor = Math.Floor(Convert.ToDouble(RawValue));
+            if (Math.Abs(Convert.ToDouble(RawValue) - floor) < double.Epsilon && Math.Abs(floor) < long.MaxValue)
             {
-                return (long) other.RawValue == (long) floor;
+                return Convert.ToInt64(other.RawValue) == Convert.ToInt64(floor);
             }
 
-            return Math.Abs((double) RawValue - (double) other.RawValue) < double.Epsilon;
+            return Math.Abs(Convert.ToDouble(RawValue) - Convert.ToDouble(other.RawValue)) < double.Epsilon;
         }
 
         public long RawLength

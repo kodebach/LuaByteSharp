@@ -70,7 +70,7 @@ namespace LuaByteSharp.Lua
 
             if (TryParseFloat(out double dv) && Math.Abs(Math.Floor(dv) - dv) < double.Epsilon)
             {
-                if (dv < long.MaxValue)
+                if (Math.Abs(dv) < long.MaxValue)
                 {
                     v = Convert.ToInt64(dv);
                     return true;
@@ -94,7 +94,7 @@ namespace LuaByteSharp.Lua
         {
             var s = Value.Trim();
             const string hexPattern =
-                "[+-]?((0[xX])?([0-9a-fA-F]+(\\.[0-9a-fA-F]*)?|\\.[0-9a-fA-F]+)([pP][+-]?[0-9]+)?|[iI][nN][fF]([iI][nN][iI][tT][yY])?|[nN][aA][nN])";
+                "^[+-]?((0[xX])?([0-9a-fA-F]+(\\.[0-9a-fA-F]*)?|\\.[0-9a-fA-F]+)([pP][+-]?[0-9]+)?|[iI][nN][fF]([iI][nN][iI][tT][yY])?|[nN][aA][nN])$";
             if (Regex.IsMatch(s, hexPattern))
             {
                 v = HexFloat.DoubleFromHexString(s);

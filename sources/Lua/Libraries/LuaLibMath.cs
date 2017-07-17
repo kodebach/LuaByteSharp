@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 
-namespace LuaByteSharp.Lua
+namespace LuaByteSharp.Lua.Libraries
 {
-    internal class LuaMath : LuaExternalTable
+    internal class LuaLibMath : LuaExternalTable
     {
         private static readonly LuaValue Huge = new LuaValue(double.PositiveInfinity);
         private static readonly LuaValue MaxInteger = new LuaValue(long.MaxValue);
@@ -11,7 +11,7 @@ namespace LuaByteSharp.Lua
         private static readonly LuaValue Pi = new LuaValue(Math.PI);
         private static Random _random = new Random();
 
-        public LuaMath()
+        public LuaLibMath()
         {
             SetExternalFunction("abs", Abs);
             SetExternalFunction("acos", Acos);
@@ -112,7 +112,7 @@ namespace LuaByteSharp.Lua
             return SingleArgNumberFunc(args, Math.Floor);
         }
 
-        private static LuaValue[] FMod(params LuaValue[] args)
+        private static LuaValue[] ModF(params LuaValue[] args)
         {
             if (args == null || args.Length == 0)
             {
@@ -121,7 +121,11 @@ namespace LuaByteSharp.Lua
 
             var a = args[0].AsNumber();
             var floor = a < 0 ? Math.Ceiling(a) : Math.Floor(a);
-            return new[] {new LuaValue(Convert.ToInt64(floor)), new LuaValue(a - floor)};
+            return new[]
+            {
+                new LuaValue(floor < long.MaxValue && floor > long.MinValue ? Convert.ToInt64(floor) : floor),
+                new LuaValue(a - floor)
+            };
         }
 
         private static LuaValue[] Log(params LuaValue[] args)
@@ -154,7 +158,7 @@ namespace LuaByteSharp.Lua
             return new[] {args.Min()};
         }
 
-        private static LuaValue[] ModF(params LuaValue[] args)
+        private static LuaValue[] FMod(params LuaValue[] args)
         {
             if (args == null || args.Length <= 1)
             {
@@ -184,13 +188,19 @@ namespace LuaByteSharp.Lua
 
             if (args.Length >= 2)
             {
-                min = args[1].AsInteger();
+                min = max;
+                max = args[1].AsInteger();
+            }
+
+            if (min == max)
+            {
+                return new[] {new LuaValue(min)};
             }
 
             var buffer = new byte[sizeof(long)];
             _random.NextBytes(buffer);
             var rand = BitConverter.ToInt64(buffer, 0);
-            rand = Math.Abs(rand % (max - min) + min);
+            rand = rand % (max - min) + min;
             return new[] {new LuaValue(rand)};
         }
 
