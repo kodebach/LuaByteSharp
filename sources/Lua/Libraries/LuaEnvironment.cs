@@ -317,5 +317,22 @@ namespace LuaByteSharp.Lua.Libraries
         {
             return new LuaUpValue(new LuaValue[] {env}, 0);
         }
+
+        public void AllowInclude(bool allowed)
+        {
+            if (allowed)
+            {
+                SetExternalAction("__include", Include);
+            }
+            else
+            {
+                RemoveExternal("__include");
+            }
+        }
+
+        private void Include(LuaValue[] args)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

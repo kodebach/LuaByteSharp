@@ -43,22 +43,22 @@ namespace LuaByteSharp.Lua.Libraries
 
         private static LuaValue[] Match(LuaValue[] arg)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         private static LuaValue[] GSub(LuaValue[] arg)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         private static LuaValue[] GMatch(LuaValue[] arg)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         private static LuaValue[] Find(LuaValue[] arg)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         private static LuaValue[] Format(LuaValue[] args)

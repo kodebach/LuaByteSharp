@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace LuaByteSharp.Lua.Libraries
 {
@@ -15,9 +16,26 @@ namespace LuaByteSharp.Lua.Libraries
             SetExternalFunction("unpack", Unpack);
         }
 
-        private static LuaValue[] Concat(LuaValue[] arg)
+        private static LuaValue[] Concat(LuaValue[] args)
         {
-            throw new NotImplementedException();
+            if (args.Length < 1)
+            {
+                throw new ArgumentNullException();
+            }
+
+            var list = (LuaTable) args[0].RawValue;
+            var sep = args.Length > 1 ? args[1].AsString().Value : "";
+            var i = args.Length > 2 ? args[2].AsInteger() : 1;
+            var j = args.Length > 3 ? args[3].AsInteger() : list.Length.AsInteger();
+
+            var result = "";
+            for (var k = i; k < j; k++)
+            {
+                result += list[new LuaValue(k)].AsString().Value + sep;
+            }
+            result += list[new LuaValue(j)];
+
+            return new LuaValue[] {LuaString.FromString(result)};
         }
 
         private static void Insert(LuaValue[] args)
@@ -40,9 +58,26 @@ namespace LuaByteSharp.Lua.Libraries
             table.Insert(pos, value);
         }
 
-        private static LuaValue[] Move(LuaValue[] arg)
+        private static LuaValue[] Move(LuaValue[] args)
         {
-            throw new NotImplementedException();
+            if (args.Length < 4)
+            {
+                throw new ArgumentNullException();
+            }
+
+            var table = (LuaTable) args[0].RawValue;
+
+            var f = args[1].AsInteger();
+            var e = args[2].AsInteger();
+            var t = args[3].AsInteger();
+            var dest = args.Length > 4 ? (LuaTable) args[4].RawValue : table;
+
+            for (var i = f; i <= e; i++)
+            {
+                dest[new LuaValue(t)] = table[new LuaValue(i)];
+            }
+
+            return new LuaValue[] {dest};
         }
 
         private static LuaValue[] Remove(LuaValue[] args)

@@ -37,5 +37,15 @@ namespace LuaByteSharp.Lua
         {
             _external[key] = value;
         }
+
+        protected void RemoveExternal(string name)
+        {
+            RemoveExternal(LuaString.FromString(name));
+        }
+
+        private void RemoveExternal(LuaString key)
+        {
+            _external.Remove(key);
+        }
     }
 }

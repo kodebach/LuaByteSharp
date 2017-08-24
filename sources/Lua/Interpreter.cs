@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -21,7 +20,7 @@ namespace LuaByteSharp.Lua
             public string[] Files;
         }
 
-        private const int FIELDS_PER_FLUSH = 50;
+        private const int FieldsPerFlush = 50;
 
         public static void Run(string[] args)
         {
@@ -41,11 +40,10 @@ namespace LuaByteSharp.Lua
                         .Select(path => File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None))
                         .ToArray<Stream>();
 
-                var env = DefaultEnvironment();
                 foreach (var stream in input)
                 {
                     var chunk = LuaChunk.Load(stream);
-                    ExecuteChunk(env, chunk, pArgs.AllowInclude);
+                    ExecuteChunk(chunk, pArgs.AllowInclude);
                 }
             }
             finally
@@ -60,12 +58,20 @@ namespace LuaByteSharp.Lua
             }
         }
 
-        private static void ExecuteChunk(LuaEnvironment env, LuaChunk chunk, bool allowInclude)
+        private static void ExecuteChunk(LuaChunk chunk, bool allowInclude)
+        {
+            var env = DefaultEnvironment();
+            ExecuteChunk(ref env, chunk, allowInclude);
+        }
+
+        private static void ExecuteChunk(ref LuaEnvironment env, LuaChunk chunk, bool allowInclude)
         {
             if (allowInclude)
             {
+                env.AllowInclude(true);
                 throw new NotImplementedException();
             }
+            env.AllowInclude(false);
 
             var varargs = new LuaValue[0];
 
@@ -792,10 +798,10 @@ namespace LuaByteSharp.Lua
                         {
                             b = top - a - 1;
                         }
-                        regs[a].EnsureArraySize((c - 1) * FIELDS_PER_FLUSH + b);
+                        regs[a].EnsureArraySize((c - 1) * FieldsPerFlush + b);
                         for (var i = 1; i <= b; i++)
                         {
-                            regs[a][(c - 1) * FIELDS_PER_FLUSH + i] = regs[a + i];
+                            regs[a][(c - 1) * FieldsPerFlush + i] = regs[a + i];
                         }
                         break;
                     }

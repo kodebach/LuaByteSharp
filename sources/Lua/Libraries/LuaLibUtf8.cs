@@ -44,6 +44,11 @@ namespace LuaByteSharp.Lua.Libraries
             i = i >= len ? i : (-i > len ? 0 : len + i + 1);
             i--;
 
+            if (i < 0 || i >= len)
+            {
+                return new[] {LuaValue.Nil};
+            }
+
             if (n == 0)
             {
                 while (i > 0 && IsContinuation(luaString[(int) i])) i--;
