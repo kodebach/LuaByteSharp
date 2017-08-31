@@ -22,3 +22,5 @@ Die folgenden Methoden wurden umgesetzt, sind aber höchstwahrscheinlich fehlerh
 * `utf8.codepoint`
 * `utf8.len`
 * `utf8.offset`
+
+Das Meta-Table Konzept wurde nicht implementiert.
