@@ -65,7 +65,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var format = args[0].AsString().Value;
@@ -79,7 +79,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var luaString = args[0].AsString();
@@ -105,7 +105,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var bytes = args[0].AsString().Bytes;
@@ -119,7 +119,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var s = args[0].AsString().Value;
@@ -165,7 +165,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new LuaValue[] {LuaString.FromString(args[0].AsString().Value.ToUpper())};
@@ -175,7 +175,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new LuaValue[] {LuaString.FromString(args[0].AsString().Value.ToLower())};
@@ -185,7 +185,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {new LuaValue(args[0].AsString().Length - 1)};
@@ -206,7 +206,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var luaString = args[0].AsString();

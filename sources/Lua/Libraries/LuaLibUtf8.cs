@@ -28,7 +28,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var luaString = args[0].AsString();
@@ -92,7 +92,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var luaString = args[0].AsString();
@@ -116,7 +116,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var luaString = args[0].AsString();
@@ -145,7 +145,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {LuaValue.ExternalFunction(CodesIterator), args[0], LuaValue.Zero};

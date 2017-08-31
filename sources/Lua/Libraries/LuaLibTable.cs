@@ -20,7 +20,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 1)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var list = (LuaTable) args[0].RawValue;
@@ -42,7 +42,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var table = (LuaTable) args[0].RawValue;
@@ -62,7 +62,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 4)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var table = (LuaTable) args[0].RawValue;
@@ -84,7 +84,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var table = (LuaTable) args[0].RawValue;
@@ -117,7 +117,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].Type != LuaValueType.Table)

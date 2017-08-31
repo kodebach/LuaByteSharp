@@ -41,7 +41,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].HasMetaTable)
@@ -62,7 +62,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].Type != LuaValueType.Table)
@@ -81,7 +81,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].Type != LuaValueType.Table)
@@ -106,7 +106,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {new LuaValue(args[0].RawEquals(args[1]))};
@@ -116,7 +116,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {args[0].RawGet(args[1])};
@@ -126,7 +126,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 1)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {new LuaValue(args[0].RawLength)};
@@ -136,7 +136,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length < 2)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {new LuaValue(args[0].RawSet(args[1], args[2]))};
@@ -146,7 +146,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var pos = args[0];
@@ -175,27 +175,27 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
-            throw new NotSupportedException("metatables");
+            throw new NotImplementedException("metatables not implemented");
         }
 
         private static LuaValue[] SetMetaTable(LuaValue[] args)
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
-            throw new NotSupportedException("metatables");
+            throw new NotImplementedException("metatables not implemented");
         }
 
         private static LuaValue[] ToNumber(LuaValue[] args)
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args.Length > 1)
@@ -226,7 +226,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new LuaValue[] {args[0].AsString()};
@@ -236,7 +236,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             switch (args[0].Type)
@@ -283,7 +283,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (values == null || values.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var v = values[0];
@@ -302,7 +302,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (values == null || values.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             throw new Exception("ERROR: " + values[0].ToPrintString());
@@ -333,6 +333,13 @@ namespace LuaByteSharp.Lua.Libraries
         private void Include(LuaValue[] args)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    internal class InvalidArgumentCountException : Exception
+    {
+        public InvalidArgumentCountException() : base("invalid argument count")
+        {
         }
     }
 }

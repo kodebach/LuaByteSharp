@@ -414,7 +414,7 @@ namespace LuaByteSharp.Lua
                         var a = InstructionMask.GetArgA(instr);
                         var b = InstructionMask.GetArgB(instr);
                         var c = InstructionMask.GetArgC(instr);
-                        regs[a] = LuaValue.Concat(new ArraySlice<LuaValue>(regs, b, c - b + 1));
+                        regs[a] = LuaValue.Concat(regs.Slice(b, c - b + 1));
                         break;
                     }
                     case OpCode.Jmp:
@@ -554,8 +554,8 @@ namespace LuaByteSharp.Lua
                             var func = regs[a].RawValue as Func<LuaValue[], LuaValue[]>;
 
                             var argCount = b == 0 ? top - (a + 1) : b - 1;
-                            var args = new ArraySlice<LuaValue>(regs, a + 1, argCount);
-                            var retvals = func.Invoke(args.ToArray());
+                            var args = regs.Slice(a + 1, argCount);
+                            var retvals = func.Invoke(args);
                             if (c == 0)
                             {
                                 top = a + retvals.Length;
@@ -583,7 +583,7 @@ namespace LuaByteSharp.Lua
                         {
                             var action = regs[a].RawValue as Action<LuaValue[]>;
                             var argCount = b == 0 ? top - (a + 1) : b - 1;
-                            var args = new ArraySlice<LuaValue>(regs, a + 1, argCount);
+                            var args = regs.Slice(a + 1, argCount);
                             action.Invoke(args.ToArray());
                             break;
                         }
@@ -647,7 +647,7 @@ namespace LuaByteSharp.Lua
                         if (callStack.Count <= 0)
                         {
                             // external call
-                            return new ArraySlice<LuaValue>(regs, a, retCount);
+                            return regs.Slice(a, retCount);
                         }
 
                         var parentFrame = callStack.Pop();
@@ -753,8 +753,8 @@ namespace LuaByteSharp.Lua
                         {
                             var func = regs[a].RawValue as Func<LuaValue[], LuaValue[]>;
 
-                            var args = new ArraySlice<LuaValue>(regs, a + 1, 2);
-                            var retvals = func.Invoke(args.ToArray());
+                            var args = regs.Slice(a + 1, 2);
+                            var retvals = func.Invoke(args);
 
                             var count = Math.Min(retvals.Length, c);
                             Array.Copy(retvals, 0, regs, a + 3, count);

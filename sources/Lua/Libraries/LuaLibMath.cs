@@ -47,7 +47,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].Type == LuaValueType.Integer)
@@ -61,7 +61,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {new LuaValue(numberFunc(args[0].AsNumber()))};
@@ -116,7 +116,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var a = args[0].AsNumber();
@@ -142,7 +142,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {args.Max()};
@@ -152,7 +152,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             return new[] {args.Min()};
@@ -162,7 +162,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length <= 1)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var a = args[0].AsNumber();
@@ -208,7 +208,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             _random = new Random((int) args[0].AsInteger());
@@ -233,7 +233,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             if (args[0].TryAsInteger(out long val))
@@ -248,7 +248,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args.Length == 0)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             switch (args[0].Type)
@@ -266,7 +266,7 @@ namespace LuaByteSharp.Lua.Libraries
         {
             if (args == null || args.Length <= 1)
             {
-                throw new ArgumentNullException();
+                throw new InvalidArgumentCountException();
             }
 
             var a = (ulong) args[0].AsInteger();

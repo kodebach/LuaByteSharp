@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace LuaByteSharp.Lua
 {
@@ -23,7 +24,7 @@ namespace LuaByteSharp.Lua
             {
                 if (HasMetaTable)
                 {
-                    throw new NotSupportedException("metamethods");
+                    throw new NotImplementedException("metatables not implemented");
                 }
                 return new LuaValue(RawLength);
             }
@@ -451,6 +452,11 @@ namespace LuaByteSharp.Lua
         {
             set
             {
+                if (Type == LuaValueType.Nil)
+                {
+                    throw new NotSupportedException("trying to acces Nil Value");
+                }
+
                 if (Type == LuaValueType.Table)
                 {
                     var table = (LuaTable) RawValue;
@@ -475,6 +481,11 @@ namespace LuaByteSharp.Lua
             }
             set
             {
+                if (Type == LuaValueType.Nil)
+                {
+                    throw new NotSupportedException("trying to acces Nil Value");
+                }
+
                 if (Type == LuaValueType.Table)
                 {
                     var table = (LuaTable) RawValue;
@@ -616,13 +627,18 @@ namespace LuaByteSharp.Lua
 
         public LuaValue RawGet(LuaValue index)
         {
+            if (Type == LuaValueType.Nil)
+            {
+                throw new NotSupportedException("trying to acces Nil Value");
+            }
+
             if (Type == LuaValueType.Table)
             {
                 var table = (LuaTable) RawValue;
                 return table.RawGet(index);
             }
 
-            throw new NotSupportedException("not a table");
+            throw new InvalidOperationException("not a table");
         }
 
         public LuaValue RawSet(LuaValue index, LuaValue value)
@@ -634,7 +650,7 @@ namespace LuaByteSharp.Lua
                 return table;
             }
 
-            throw new NotSupportedException("not a table");
+            throw new InvalidOperationException("not a table");
         }
     }
 }
