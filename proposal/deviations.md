@@ -8,12 +8,6 @@ Die folgenden Methoden der Standard-Library wurden entgegen dem ursprünglichen 
 * `string.gmatch`
 * `string.find`
 * `table.sort`
-* `collectgarbage`
-* `dofile`
-* `load`
-* `loadfile`
-* `pcall`
-* `xpcall`
 
 Die folgenden Methoden wurden umgesetzt, sind aber höchstwahrscheinlich fehlerhaft:
 * `utf8.char`
